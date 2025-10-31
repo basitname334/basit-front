@@ -568,30 +568,6 @@ export default function AdminDashboard({ apiBase }) {
                       />
                       <p className="text-xs text-gray-500 mt-1">{t('baseQuantityDesc')}</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('pricePerBase')}</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder={t('pricePerBasePlaceholder')}
-                        className="input-modern w-full"
-                        value={newDish.price_per_base}
-                        onChange={e => setNewDish({...newDish, price_per_base: e.target.value})}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">{t('pricePerBaseDesc')}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('costPerBase')}</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder={t('costPerBasePlaceholder')}
-                        className="input-modern w-full"
-                        value={newDish.cost_per_base}
-                        onChange={e => setNewDish({...newDish, cost_per_base: e.target.value})}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">{t('costPerBaseDesc')}</p>
-                    </div>
                   </div>
                 </div>
 
