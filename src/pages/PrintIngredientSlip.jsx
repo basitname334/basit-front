@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useI18n } from '../i18n.jsx'
+import { MdPhone, MdPrint } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -15,19 +16,34 @@ export default function PrintIngredientSlip({ apiBase }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(()=>{
+    if (!id) return
     (async ()=>{
       try {
         const res = await fetch(`${apiBase}/orders/${id}/slips`, { headers })
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to fetch slip data: ${res.status}`)
+        }
         const d = await res.json()
-        setData(d.ingredientSlip)
+        // Handle different response structures
+        const slipData = d.ingredientSlip || d.ingredients || d
+        if (!slipData) {
+          throw new Error('No slip data received')
+        }
+        // Validate that we have some meaningful data
+        if (!slipData.items && !slipData.ingredients && (!slipData.order_id && !slipData.orderId)) {
+          console.warn('Slip data may be incomplete:', slipData)
+        }
+        setData(slipData)
         setTimeout(()=>window.print(), 300)
       } catch (error) {
         console.error('Failed to load slip:', error)
+        setData(null)
       } finally {
         setLoading(false)
       }
     })()
-  },[id])
+  },[id, apiBase, headers])
 
   if (loading) {
     return (
@@ -44,8 +60,9 @@ export default function PrintIngredientSlip({ apiBase }) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <p className="text-red-600">{t('failedToLoad')} {t('ingredientSlip').toLowerCase()}</p>
-          <Link to="/orders" className="text-blue-600 mt-4 inline-block">← {t('backToOrders')}</Link>
+          <p className="text-red-600 font-semibold mb-2">{t('failedToLoad')} {t('ingredientSlip').toLowerCase()}</p>
+          <p className="text-sm text-gray-500 mb-4">Please check if the order exists and try again.</p>
+          <Link to="/orders" className="btn-primary inline-block">← {t('backToOrders')}</Link>
         </div>
       </div>
     )
@@ -59,7 +76,7 @@ export default function PrintIngredientSlip({ apiBase }) {
           onClick={() => window.print()} 
           className="btn-primary ml-4"
         >
-          🖨️ {t('print')}
+          <MdPrint className="inline text-base" /> {t('print')}
         </button>
       </div>
 
@@ -67,12 +84,14 @@ export default function PrintIngredientSlip({ apiBase }) {
         <div className="text-center mb-8 pb-6 border-b-2 border-gray-300">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('ingredientSlip')}</h1>
           <div className="text-lg text-gray-600">
-            <p className="font-semibold">{t('orderNumber')}{data.order_id}</p>
-            <p className="mt-1">{data.dish_name} • {data.requested_quantity} {data.requested_unit}</p>
+            <p className="font-semibold">{t('orderNumber')}{data.order_id || data.orderId || 'N/A'}</p>
+            <p className="mt-1">
+              {data.dish_name || data.dishName || 'N/A'} • {data.requested_quantity || data.quantity || 'N/A'} {data.requested_unit || data.unit || ''}
+            </p>
             {data.customer_name && (
               <div className="mt-3 pt-3 border-t border-gray-300 text-base">
-                <p className="font-semibold text-gray-800">Customer: {data.customer_name}</p>
-                {data.customer_phone && <p className="text-sm text-gray-600">📞 {data.customer_phone}</p>}
+                <p className="font-semibold text-gray-800">Customer: {data.customer_name || data.customerName || 'N/A'}</p>
+                {data.customer_phone && <p className="text-sm text-gray-600 flex items-center gap-1"><MdPhone className="text-base" /> {data.customer_phone}</p>}
               </div>
             )}
           </div>
@@ -89,13 +108,19 @@ export default function PrintIngredientSlip({ apiBase }) {
               </tr>
             </thead>
             <tbody>
-              {data.items.map((x,idx)=> (
-                <tr key={idx}>
-                  <td className="font-medium">{x.name}</td>
-                  <td>{Number(x.amount.toFixed(4))}</td>
-                  <td>{x.unit}</td>
+              {(data.items || data.ingredients || []).length > 0 ? (
+                (data.items || data.ingredients || []).map((x,idx)=> (
+                  <tr key={idx}>
+                    <td className="font-medium">{x.name || x.ingredient_name || 'Unknown'}</td>
+                    <td>{Number((x.amount || x.scaled_amount || x.scaledAmount || 0).toFixed(4))}</td>
+                    <td>{x.unit || ''}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="text-center text-gray-500 py-4">No ingredients found</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

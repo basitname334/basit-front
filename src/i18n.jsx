@@ -153,8 +153,11 @@ const dictionaries = {
     failedToLoad: 'Failed to load',
     requiredIngredients: 'Required Ingredients',
     amount: 'Amount',
+    unit: 'Unit',
     orderDateTime: 'Order Date & Time',
     generatedOn: 'Generated on',
+    ingredientSlip: 'Ingredient Slip',
+    orderSlip: 'Order Slip',
   },
   ur: {
     brand: 'حسن کُک چائنیز فوڈ اسپیشلسٹ',
@@ -308,8 +311,11 @@ const dictionaries = {
     failedToLoad: 'لوڈ کرنے میں ناکام',
     requiredIngredients: 'ضروری اجزاء',
     amount: 'مقدار',
+    unit: 'یونٹ',
     orderDateTime: 'آرڈر کی تاریخ اور وقت',
     generatedOn: 'بنایا گیا',
+    ingredientSlip: 'اجزاء کی پرچی',
+    orderSlip: 'آرڈر پرچی',
   }
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { MdReceipt, MdPerson, MdPeople, MdPhone, MdEmail, MdLocationOn, MdCalendarToday, MdAccessTime, MdRestaurant, MdAdd, MdCheckCircle, MdDelete, MdShoppingCart } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -169,7 +170,7 @@ export default function CompleteDashboard({ apiBase }) {
         return
       }
       
-      setMessage(`✅ ${results.length} order(s) placed successfully! Order #${results[0].id}`)
+      setMessage(`✓ ${results.length} order(s) placed successfully! Order #${results[0].id}`)
       setOrderDishes([])
       setDeliveryAddress('')
     } catch (error) {
@@ -186,14 +187,14 @@ export default function CompleteDashboard({ apiBase }) {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">Create Order</h1>
             <p className="text-sm sm:text-base text-indigo-100">Place new orders with multiple dishes</p>
           </div>
-          <div className="text-3xl sm:text-4xl lg:text-5xl">📋</div>
+          <MdReceipt className="text-3xl sm:text-4xl lg:text-5xl" />
         </div>
       </div>
 
       {/* User Information */}
       {auth && (
         <div className="card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">👤 User Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2"><MdPerson className="text-xl" /> User Information</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
@@ -213,7 +214,7 @@ export default function CompleteDashboard({ apiBase }) {
 
       {/* Customer Information */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">👥 Customer Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><MdPeople className="text-xl" /> Customer Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Customer <span className="text-red-500">*</span></label>
@@ -242,7 +243,7 @@ export default function CompleteDashboard({ apiBase }) {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer Phone</label>
                   <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700">
-                    📞 {selectedCustomer.phone}
+                    <div className="flex items-center gap-1"><MdPhone className="text-base" /> {selectedCustomer.phone}</div>
                   </div>
                 </div>
               )}
@@ -250,7 +251,7 @@ export default function CompleteDashboard({ apiBase }) {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer Email</label>
                   <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700">
-                    ✉️ {selectedCustomer.email}
+                    <div className="flex items-center gap-1"><MdEmail className="text-base" /> {selectedCustomer.email}</div>
                   </div>
                 </div>
               )}
@@ -258,7 +259,7 @@ export default function CompleteDashboard({ apiBase }) {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer Address</label>
                   <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700">
-                    📍 {selectedCustomer.address}
+                    <div className="flex items-center gap-1"><MdLocationOn className="text-base" /> {selectedCustomer.address}</div>
                   </div>
                 </div>
               )}
@@ -269,7 +270,7 @@ export default function CompleteDashboard({ apiBase }) {
 
       {/* Booking & Delivery Information */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">📅 Booking & Delivery Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2"><MdCalendarToday className="text-xl" /> Booking & Delivery Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Booking Date <span className="text-red-500">*</span></label>
@@ -326,13 +327,13 @@ export default function CompleteDashboard({ apiBase }) {
       {/* Dishes Section */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">🍽️ Order Dishes</h3>
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><MdRestaurant className="text-xl" /> Order Dishes</h3>
           {!showAddDish && (
             <button 
               onClick={() => setShowAddDish(true)}
               className="btn-success"
             >
-              ➕ Add Dish
+              <MdAdd className="inline text-base" /> Add Dish
             </button>
           )}
         </div>
@@ -389,7 +390,7 @@ export default function CompleteDashboard({ apiBase }) {
                 className="btn-success"
                 disabled={!newDishId || !newDishQty || Number(newDishQty) <= 0}
               >
-                ✅ Add to Order
+                <MdCheckCircle className="inline text-base" /> Add to Order
               </button>
               <button
                 onClick={() => {
@@ -407,7 +408,7 @@ export default function CompleteDashboard({ apiBase }) {
 
         {orderDishes.length === 0 ? (
           <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-            <span className="text-4xl mb-2 block">🍽️</span>
+            <MdRestaurant className="text-4xl mb-2 block mx-auto text-gray-400" />
             <p className="text-gray-500 font-medium">No dishes added yet</p>
             <p className="text-sm text-gray-400 mt-1">Click "Add Dish" to start building your order</p>
           </div>
@@ -445,7 +446,7 @@ export default function CompleteDashboard({ apiBase }) {
                     className="btn-danger ml-4"
                     title="Remove dish"
                   >
-                    🗑️
+                    <MdDelete className="text-base" />
                   </button>
                 </div>
               )
@@ -462,11 +463,11 @@ export default function CompleteDashboard({ apiBase }) {
             className="btn-primary w-full sm:w-auto"
             disabled={!selectedCustomerId || orderDishes.length === 0 || !bookingDate || !bookingTime || !deliveryDate || !deliveryTime}
           >
-            ✅ Create Order
+            <MdCheckCircle className="inline text-base" /> Create Order
           </button>
           {message && (
             <div className={`px-4 py-2 rounded-lg text-sm font-medium flex-1 ${
-              message.includes('✅') || message.includes('successfully')
+              message.includes('✓') || message.includes('successfully')
                 ? 'bg-green-50 border border-green-200 text-green-700'
                 : 'bg-red-50 border border-red-200 text-red-700'
             }`}>

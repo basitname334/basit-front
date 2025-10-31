@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../i18n.jsx'
+import { MdRestaurant, MdError } from 'react-icons/md'
 
 export default function Login({ apiBase, onLogin }) {
   const { t, lang, setLang } = useI18n()
@@ -32,7 +33,7 @@ export default function Login({ apiBase, onLogin }) {
       <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <div className="text-center">
           <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl mb-4 sm:mb-6 transform hover:scale-105 transition-transform">
-            <span className="text-3xl sm:text-4xl text-white">🍽️</span>
+            <MdRestaurant className="text-3xl sm:text-4xl text-white" />
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             {t('brand')}
@@ -53,7 +54,7 @@ export default function Login({ apiBase, onLogin }) {
         <div className="card shadow-2xl">
           {error && (
             <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 rounded-xl text-red-700 text-sm shadow-sm">
-              <strong className="font-semibold">⚠️ Error:</strong> {error}
+              <strong className="font-semibold flex items-center gap-1"><MdError className="text-base" /> Error:</strong> {error}
             </div>
           )}
           

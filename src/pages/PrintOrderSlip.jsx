@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useI18n } from '../i18n.jsx'
+import { MdPhone, MdEmail, MdLocationOn, MdPrint } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -15,19 +16,30 @@ export default function PrintOrderSlip({ apiBase }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(()=>{
+    if (!id) return
     (async ()=>{
       try {
         const res = await fetch(`${apiBase}/orders/${id}/slips`, { headers })
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to fetch slip data: ${res.status}`)
+        }
         const d = await res.json()
-        setData(d.orderSlip)
+        // Handle different response structures
+        const slipData = d.orderSlip || d.order || d
+        if (!slipData || !slipData.order_id) {
+          throw new Error('Invalid slip data received')
+        }
+        setData(slipData)
         setTimeout(()=>window.print(), 300)
       } catch (error) {
         console.error('Failed to load slip:', error)
+        setData(null)
       } finally {
         setLoading(false)
       }
     })()
-  },[id])
+  },[id, apiBase, headers])
 
   if (loading) {
     return (
@@ -44,8 +56,9 @@ export default function PrintOrderSlip({ apiBase }) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <p className="text-red-600">{t('failedToLoad')} {t('orderSlip').toLowerCase()}</p>
-          <Link to="/orders" className="text-blue-600 mt-4 inline-block">← {t('backToOrders')}</Link>
+          <p className="text-red-600 font-semibold mb-2">{t('failedToLoad')} {t('orderSlip').toLowerCase()}</p>
+          <p className="text-sm text-gray-500 mb-4">Please check if the order exists and try again.</p>
+          <Link to="/orders" className="btn-primary inline-block">← {t('backToOrders')}</Link>
         </div>
       </div>
     )
@@ -59,7 +72,7 @@ export default function PrintOrderSlip({ apiBase }) {
           onClick={() => window.print()} 
           className="btn-primary ml-4"
         >
-          🖨️ {t('print')}
+          <MdPrint className="inline text-base" /> {t('print')}
         </button>
       </div>
 
@@ -67,7 +80,7 @@ export default function PrintOrderSlip({ apiBase }) {
         <div className="text-center mb-8 pb-6 border-b-2 border-gray-300">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('orderSlip')}</h1>
           <div className="text-lg text-gray-600">
-            <p className="font-semibold">{t('orderNumber')}{data.order_id}</p>
+            <p className="font-semibold">{t('orderNumber')}{data.order_id || data.orderId || data.id || 'N/A'}</p>
           </div>
         </div>
         
@@ -75,27 +88,31 @@ export default function PrintOrderSlip({ apiBase }) {
           {data.customer_name && (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
               <p className="text-sm font-semibold text-blue-900 mb-2">Customer Information</p>
-              <p className="text-lg font-bold text-gray-900">{data.customer_name}</p>
-              {data.customer_phone && <p className="text-sm text-gray-700 mt-1">📞 {data.customer_phone}</p>}
-              {data.customer_email && <p className="text-sm text-gray-700">✉️ {data.customer_email}</p>}
-              {data.customer_address && <p className="text-sm text-gray-700 mt-1">📍 {data.customer_address}</p>}
+              <p className="text-lg font-bold text-gray-900">{data.customer_name || data.customerName || 'N/A'}</p>
+              {data.customer_phone && <p className="text-sm text-gray-700 mt-1 flex items-center gap-1"><MdPhone className="text-base" /> {data.customer_phone}</p>}
+              {data.customer_email && <p className="text-sm text-gray-700 flex items-center gap-1"><MdEmail className="text-base" /> {data.customer_email}</p>}
+              {data.customer_address && <p className="text-sm text-gray-700 mt-1 flex items-center gap-1"><MdLocationOn className="text-base" /> {data.customer_address}</p>}
             </div>
           )}
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">{t('dishName')}</p>
-              <p className="text-lg font-semibold text-gray-900">{data.dish_name}</p>
+              <p className="text-lg font-semibold text-gray-900">{data.dish_name || data.dishName || 'N/A'}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">{t('quantity')}</p>
-              <p className="text-lg font-semibold text-gray-900">{data.quantity} {data.unit}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {data.quantity || data.requested_quantity || 'N/A'} {data.unit || data.requested_unit || ''}
+              </p>
             </div>
           </div>
           
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">{t('orderDateTime')}</p>
-            <p className="text-lg font-semibold text-gray-900">{new Date(data.created_at).toLocaleString()}</p>
+            <p className="text-lg font-semibold text-gray-900">
+              {data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A'}
+            </p>
           </div>
         </div>
 

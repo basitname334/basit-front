@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n.jsx'
+import { MdReceipt, MdDashboard, MdPhone, MdDescription, MdPrint, MdInbox, MdLightbulb } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -35,7 +36,7 @@ export default function Orders({ apiBase }) {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">{t('orderHistory')}</h1>
             <p className="text-sm sm:text-base text-indigo-100">{t('viewAllOrders')}</p>
           </div>
-          <div className="text-3xl sm:text-4xl lg:text-5xl">📋</div>
+          <MdReceipt className="text-3xl sm:text-4xl lg:text-5xl" />
         </div>
       </div>
 
@@ -44,7 +45,7 @@ export default function Orders({ apiBase }) {
         <div className="card-header">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">📊</span>
+              <MdDashboard className="text-xl" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{t('allOrders')}</h2>
@@ -61,7 +62,7 @@ export default function Orders({ apiBase }) {
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-            <span className="text-5xl mb-3 block">📭</span>
+            <MdInbox className="text-5xl mb-3 block mx-auto text-gray-400" />
             <p className="text-gray-500 font-medium">{t('noOrdersYet')}</p>
             <p className="text-sm text-gray-400 mt-1">{t('placeFirstOrder')}</p>
             <Link to="/user" className="btn-primary inline-block mt-4">
@@ -71,7 +72,7 @@ export default function Orders({ apiBase }) {
         ) : (
           <>
             <div className="info-box info-box-blue mb-4">
-              <p className="text-sm font-medium mb-1">💡 {t('tips')}:</p>
+              <p className="text-sm font-medium mb-1 flex items-center gap-1"><MdLightbulb className="text-base" /> {t('tips')}:</p>
               <ul className="text-sm space-y-1 list-disc list-inside">
                 <li>{t('tip1')}</li>
                 <li>{t('tip2')}</li>
@@ -100,14 +101,14 @@ export default function Orders({ apiBase }) {
                       <td className="hidden sm:table-cell">
                         <div className="font-medium text-gray-900">{o.customer_name || 'N/A'}</div>
                         {o.customer_phone && (
-                          <div className="text-xs text-gray-500">📞 {o.customer_phone}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-1"><MdPhone className="text-xs" /> {o.customer_phone}</div>
                         )}
                       </td>
                       <td>
                         <div className="font-medium text-gray-900">{o.dish_name}</div>
                         <div className="text-xs text-gray-500 sm:hidden mt-1">
                           {o.customer_name || 'N/A'}
-                          {o.customer_phone && ` • 📞 ${o.customer_phone}`}
+                          {o.customer_phone && ` • ☎ ${o.customer_phone}`}
                         </div>
                       </td>
                       <td>
@@ -130,14 +131,14 @@ export default function Orders({ apiBase }) {
                             className="px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors text-center"
                             title={t('ingredientSlip')}
                           >
-                            📝 <span className="hidden sm:inline">{t('ingredientSlip')}</span>
+                            <MdDescription className="inline text-base" /> <span className="hidden sm:inline">{t('ingredientSlip')}</span>
                           </Link>
                           <Link 
                             to={`/orders/${o.id}/order-slip`} 
                             className="px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors text-center"
                             title={t('orderSlip')}
                           >
-                            📄 <span className="hidden sm:inline">{t('orderSlip')}</span>
+                            <MdPrint className="inline text-base" /> <span className="hidden sm:inline">{t('orderSlip')}</span>
                           </Link>
                         </div>
                       </td>

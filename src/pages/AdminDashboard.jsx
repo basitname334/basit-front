@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../i18n.jsx'
+import { MdAdminPanelSettings, MdFolder, MdRestaurantMenu, MdPeople, MdRestaurant, MdAdd, MdDelete, MdCheckCircle, MdError, MdWarning, MdPhone, MdEmail, MdLocationOn, MdLocalDining } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -236,7 +237,7 @@ export default function AdminDashboard({ apiBase }) {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">{t('adminDashboard')}</h1>
             <p className="text-sm sm:text-base text-blue-100">{t('adminSubtitle')}</p>
           </div>
-          <div className="text-3xl sm:text-4xl lg:text-5xl">👨‍💼</div>
+          <MdAdminPanelSettings className="text-3xl sm:text-4xl lg:text-5xl" />
         </div>
       </div>
 
@@ -247,26 +248,26 @@ export default function AdminDashboard({ apiBase }) {
             ? 'bg-green-50 border-green-400 text-green-800' 
             : 'bg-red-50 border-red-400 text-red-800'
         }`}>
-          <strong>{message.type === 'success' ? `✓ ${t('success')}:` : `✗ ${t('error')}:`}</strong> {message.text}
+          <strong className="flex items-center gap-1">{message.type === 'success' ? <><MdCheckCircle className="text-base" /> {t('success')}:</> : <><MdError className="text-base" /> {t('error')}:</>}</strong> {message.text}
         </div>
       )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <div className="text-sm text-purple-700 font-medium mb-1">📁 Categories</div>
+          <div className="text-sm text-purple-700 font-medium mb-1 flex items-center gap-1"><MdFolder className="text-base" /> Categories</div>
           <div className="text-2xl sm:text-3xl font-bold text-purple-900">{categories.length}</div>
         </div>
         <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <div className="text-sm text-green-700 font-medium mb-1">🥬 Ingredients</div>
+          <div className="text-sm text-green-700 font-medium mb-1 flex items-center gap-1"><MdRestaurantMenu className="text-base" /> Ingredients</div>
           <div className="text-2xl sm:text-3xl font-bold text-green-900">{ingredients.length}</div>
         </div>
         <div className="card bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <div className="text-sm text-orange-700 font-medium mb-1">👥 Customers</div>
+          <div className="text-sm text-orange-700 font-medium mb-1 flex items-center gap-1"><MdPeople className="text-base" /> Customers</div>
           <div className="text-2xl sm:text-3xl font-bold text-orange-900">{customers.length}</div>
         </div>
         <div className="card bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
-          <div className="text-sm text-indigo-700 font-medium mb-1">🍽️ Dishes</div>
+          <div className="text-sm text-indigo-700 font-medium mb-1 flex items-center gap-1"><MdRestaurant className="text-base" /> Dishes</div>
           <div className="text-2xl sm:text-3xl font-bold text-indigo-900">{dishes.length}</div>
         </div>
       </div>
@@ -279,7 +280,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">📁</span>
+              <MdFolder className="text-xl" />
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Manage Categories</h2>
@@ -306,7 +307,7 @@ export default function AdminDashboard({ apiBase }) {
                   onClick={addCategory} 
                   className="btn-success whitespace-nowrap"
                 >
-                  ➕ Add
+                  <MdAdd className="inline text-base" /> Add
                 </button>
               </div>
             </div>
@@ -316,7 +317,7 @@ export default function AdminDashboard({ apiBase }) {
                 {categories.map(cat => (
                   <div key={cat.id} className="flex justify-between items-center border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">📁</span>
+                      <MdFolder className="text-lg" />
                       <div>
                         <div className="font-semibold text-sm text-gray-900">{cat.name}</div>
                         <div className="text-xs text-gray-500">
@@ -329,7 +330,7 @@ export default function AdminDashboard({ apiBase }) {
                       className="btn-danger text-xs"
                       title="Delete"
                     >
-                      🗑️
+                      <MdDelete className="text-base" />
                     </button>
                   </div>
                 ))}
@@ -347,7 +348,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">🥬</span>
+              <MdRestaurantMenu className="text-xl" />
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('manageIngredients')}</h2>
@@ -385,10 +386,10 @@ export default function AdminDashboard({ apiBase }) {
                 className="btn-success"
                 disabled={categories.length === 0}
               >
-                ➕ {t('addIngredient')}
+                <MdAdd className="inline text-base" /> {t('addIngredient')}
               </button>
               {categories.length === 0 && (
-                <p className="text-xs text-red-600 mt-2">⚠️ Add categories first</p>
+                <p className="text-xs text-red-600 mt-2 flex items-center gap-1"><MdWarning className="text-sm" /> Add categories first</p>
               )}
             </div>
 
@@ -397,7 +398,7 @@ export default function AdminDashboard({ apiBase }) {
                 {ingredients.map(ing => (
                   <div key={ing.id} className="flex justify-between items-center border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">🍽️</span>
+                      <MdRestaurantMenu className="text-lg" />
                       <div>
                         <div className="font-semibold text-sm text-gray-900">{ing.name}</div>
                         <div className="text-xs text-gray-500">Category: {ing.category_name || 'N/A'}</div>
@@ -408,7 +409,7 @@ export default function AdminDashboard({ apiBase }) {
                       className="btn-danger text-xs"
                       title={t('delete')}
                     >
-                      🗑️
+                      <MdDelete className="text-base" />
                     </button>
                   </div>
                 ))}
@@ -426,7 +427,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">👥</span>
+              <MdPeople className="text-xl" />
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Manage Customers</h2>
@@ -471,7 +472,7 @@ export default function AdminDashboard({ apiBase }) {
                 onClick={addCustomer} 
                 className="btn-success"
               >
-                ➕ Add Customer
+                <MdAdd className="inline text-base" /> Add Customer
               </button>
             </div>
 
@@ -480,14 +481,14 @@ export default function AdminDashboard({ apiBase }) {
                 {customers.map(customer => (
                   <div key={customer.id} className="flex justify-between items-start border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-start gap-2 flex-1">
-                      <span className="text-lg">👤</span>
+                      <MdPeople className="text-lg" />
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm text-gray-900 truncate">{customer.name}</div>
                         {customer.phone && (
-                          <div className="text-xs text-gray-500 truncate">📞 {customer.phone}</div>
+                          <div className="text-xs text-gray-500 truncate flex items-center gap-1"><MdPhone className="text-xs" /> {customer.phone}</div>
                         )}
                         {customer.email && (
-                          <div className="text-xs text-gray-500 truncate">✉️ {customer.email}</div>
+                          <div className="text-xs text-gray-500 truncate flex items-center gap-1"><MdEmail className="text-xs" /> {customer.email}</div>
                         )}
                       </div>
                     </div>
@@ -496,7 +497,7 @@ export default function AdminDashboard({ apiBase }) {
                       className="btn-danger text-xs ml-2"
                       title="Delete"
                     >
-                      🗑️
+                      <MdDelete className="text-base" />
                     </button>
                   </div>
                 ))}
@@ -514,7 +515,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">🍽️</span>
+              <MdRestaurant className="text-xl" />
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('createDish')}</h2>
@@ -530,7 +531,7 @@ export default function AdminDashboard({ apiBase }) {
           <>
             {ingredients.length === 0 ? (
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
-                ⚠️ {t('addIngredientsFirst')}
+                <div className="flex items-center gap-2"><MdWarning className="text-base" /> {t('addIngredientsFirst')}</div>
               </div>
             ) : (
               <>
@@ -590,7 +591,7 @@ export default function AdminDashboard({ apiBase }) {
                         onClick={() => setShowIngredientSelector(true)}
                         className="btn-success text-sm"
                       >
-                        ➕ {t('addIngredientToDish')}
+                        <MdAdd className="inline text-base" /> {t('addIngredientToDish')}
                       </button>
                     )}
                   </div>
@@ -658,7 +659,7 @@ export default function AdminDashboard({ apiBase }) {
                           className="btn-success"
                           disabled={!selectedIngredientForAdd || !ingredientAmount || !ingredientUnit}
                         >
-                          ✅ Add
+                          <MdCheckCircle className="inline text-base" /> Add
                         </button>
                         <button
                           onClick={() => {
@@ -686,7 +687,7 @@ export default function AdminDashboard({ apiBase }) {
                         return (
                           <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                             <div className="flex items-center gap-3">
-                              <span className="text-lg">🥄</span>
+                              <MdLocalDining className="text-lg" />
                               <div>
                                 <div className="font-medium text-gray-900">{ing?.name || 'Unknown'}</div>
                                 <div className="text-xs text-gray-500">
@@ -699,7 +700,7 @@ export default function AdminDashboard({ apiBase }) {
                               className="btn-danger text-xs"
                               title="Remove"
                             >
-                              🗑️
+                              <MdDelete className="text-base" />
                             </button>
                           </div>
                         )
@@ -714,7 +715,7 @@ export default function AdminDashboard({ apiBase }) {
                     className="btn-primary w-full sm:w-auto"
                     disabled={!newDish.name || !newDish.base_quantity || !newDish.base_unit || dishIngs.length === 0}
                   >
-                    ✅ {t('createDishButton')}
+                    <MdCheckCircle className="inline text-base" /> {t('createDishButton')}
                   </button>
                 </div>
               </>
@@ -728,7 +729,7 @@ export default function AdminDashboard({ apiBase }) {
         <div className="card-header">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <span className="text-xl">🍽️</span>
+              <MdRestaurant className="text-xl" />
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('allDishes')}</h2>
@@ -740,7 +741,7 @@ export default function AdminDashboard({ apiBase }) {
 
         {dishes.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-            <span className="text-5xl mb-3 block">🍽️</span>
+            <MdRestaurant className="text-5xl mb-3 block mx-auto text-gray-400" />
             <p className="text-gray-500 font-medium">{t('noDishesYet')}</p>
             <p className="text-sm text-gray-400 mt-1">{t('createFirstDish')}</p>
           </div>
@@ -760,7 +761,7 @@ export default function AdminDashboard({ apiBase }) {
                     className="btn-danger ml-2"
                     title={t('delete') + ' ' + t('singleDish')}
                   >
-                    🗑️
+                    <MdDelete className="text-base" />
                   </button>
                 </div>
                 <div className="border-t pt-3">
