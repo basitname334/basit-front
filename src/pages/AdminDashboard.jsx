@@ -28,7 +28,8 @@ export default function AdminDashboard({ apiBase }) {
   const [expandedSections, setExpandedSections] = useState({
     categories: false,
     ingredients: false,
-    customers: false
+    customers: false,
+    dishes: false
   })
 
   async function load() {
@@ -151,6 +152,68 @@ export default function AdminDashboard({ apiBase }) {
 
   function toggleSection(section) {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  function addIngredientToDish() {
+    if (!selectedIngredientForAdd || !ingredientAmount || !ingredientUnit) {
+      showMessage('error', t('pleaseFillIngredientFields'))
+      return
+    }
+    if (dishIngs.some(di => di.ingredient_id === selectedIngredientForAdd.id)) {
+      showMessage('error', 'This ingredient is already added')
+      return
+    }
+    setDishIngs([...dishIngs, {
+      ingredient_id: selectedIngredientForAdd.id,
+      amount_per_base: Number(ingredientAmount),
+      unit: ingredientUnit
+    }])
+    setSelectedIngredientForAdd(null)
+    setIngredientAmount('')
+    setIngredientUnit('')
+    setShowIngredientSelector(false)
+    showMessage('success', t('ingredientAdded'))
+  }
+
+  function removeIngredientFromDish(index) {
+    setDishIngs(dishIngs.filter((_, i) => i !== index))
+  }
+
+  async function createDish() {
+    if (!newDish.name.trim()) {
+      showMessage('error', t('pleaseFillAllFields'))
+      return
+    }
+    if (!newDish.base_quantity || !newDish.base_unit) {
+      showMessage('error', t('pleaseFillAllFields'))
+      return
+    }
+    if (dishIngs.length === 0) {
+      showMessage('error', t('pleaseAddIngredient'))
+      return
+    }
+    try {
+      const res = await fetch(`${apiBase}/dishes`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: newDish.name.trim(),
+          base_quantity: Number(newDish.base_quantity),
+          base_unit: newDish.base_unit.trim(),
+          price_per_base: newDish.price_per_base ? Number(newDish.price_per_base) : null,
+          cost_per_base: newDish.cost_per_base ? Number(newDish.cost_per_base) : null,
+          ingredients: dishIngs
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      showMessage('success', t('dishCreated'))
+      setNewDish({ name: '', base_quantity: '', base_unit: '', price_per_base: '', cost_per_base: '' })
+      setDishIngs([])
+      load()
+    } catch (error) {
+      showMessage('error', error.message || t('failedToCreate'))
+    }
   }
 
   async function deleteDish(id){
@@ -438,6 +501,225 @@ export default function AdminDashboard({ apiBase }) {
                   </div>
                 ))}
               </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Create Dish Section */}
+      <div className="card">
+        <div 
+          className="card-header cursor-pointer hover:bg-gray-50 rounded-lg -mx-2 px-2 transition-colors"
+          onClick={() => toggleSection('dishes')}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <span className="text-xl">🍽️</span>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('createDish')}</h2>
+              <p className="text-xs sm:text-sm text-gray-500">{t('defineDishes')}</p>
+            </div>
+          </div>
+          <button className="text-gray-400 hover:text-gray-600 transition-colors">
+            {expandedSections.dishes ? '▼' : '▶'}
+          </button>
+        </div>
+
+        {expandedSections.dishes && (
+          <>
+            {ingredients.length === 0 ? (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+                ⚠️ {t('addIngredientsFirst')}
+              </div>
+            ) : (
+              <>
+                <div className="mb-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('dishName')}</label>
+                      <input
+                        type="text"
+                        placeholder={t('dishNamePlaceholder')}
+                        className="input-modern w-full"
+                        value={newDish.name}
+                        onChange={e => setNewDish({...newDish, name: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('baseUnit')}</label>
+                      <input
+                        type="text"
+                        placeholder={t('baseUnitPlaceholder')}
+                        className="input-modern w-full"
+                        value={newDish.base_unit}
+                        onChange={e => setNewDish({...newDish, base_unit: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('baseQuantity')}</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder={t('baseQuantityPlaceholder')}
+                        className="input-modern w-full"
+                        value={newDish.base_quantity}
+                        onChange={e => setNewDish({...newDish, base_quantity: e.target.value})}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{t('baseQuantityDesc')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('pricePerBase')}</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder={t('pricePerBasePlaceholder')}
+                        className="input-modern w-full"
+                        value={newDish.price_per_base}
+                        onChange={e => setNewDish({...newDish, price_per_base: e.target.value})}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{t('pricePerBaseDesc')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('costPerBase')}</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder={t('costPerBasePlaceholder')}
+                        className="input-modern w-full"
+                        value={newDish.cost_per_base}
+                        onChange={e => setNewDish({...newDish, cost_per_base: e.target.value})}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{t('costPerBaseDesc')}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900">{t('dishIngredients')}</h3>
+                    {!showIngredientSelector && (
+                      <button
+                        onClick={() => setShowIngredientSelector(true)}
+                        className="btn-success text-sm"
+                      >
+                        ➕ {t('addIngredientToDish')}
+                      </button>
+                    )}
+                  </div>
+
+                  {showIngredientSelector && (
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('selectIngredient')}</label>
+                          <select
+                            className="input-modern w-full"
+                            value={selectedIngredientForAdd?.id || ''}
+                            onChange={e => {
+                              const ing = ingredients.find(i => i.id === Number(e.target.value))
+                              setSelectedIngredientForAdd(ing || null)
+                              if (ing) {
+                                setIngredientUnit(ing.unit || '')
+                              }
+                            }}
+                          >
+                            <option value="">{t('selectIngredient')}</option>
+                            {ingredients
+                              .filter(ing => !dishIngs.some(di => di.ingredient_id === ing.id))
+                              .map(ing => (
+                                <option key={ing.id} value={ing.id}>{ing.name}</option>
+                              ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('amountPerBase')}</label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            placeholder={t('amountPerBasePlaceholder')}
+                            className="input-modern w-full"
+                            value={ingredientAmount}
+                            onChange={e => setIngredientAmount(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                          <input
+                            type="text"
+                            className="input-modern w-full"
+                            value={ingredientUnit}
+                            onChange={e => setIngredientUnit(e.target.value)}
+                            placeholder="e.g., kg, g, litre"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={addIngredientToDish}
+                          className="btn-success"
+                          disabled={!selectedIngredientForAdd || !ingredientAmount || !ingredientUnit}
+                        >
+                          ✅ Add
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowIngredientSelector(false)
+                            setSelectedIngredientForAdd(null)
+                            setIngredientAmount('')
+                            setIngredientUnit('')
+                          }}
+                          className="btn-secondary"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {dishIngs.length === 0 ? (
+                    <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                      <p className="text-sm text-gray-500">{t('noIngredientsAddedToDish')}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {dishIngs.map((di, idx) => {
+                        const ing = ingredients.find(i => i.id === di.ingredient_id)
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">🥄</span>
+                              <div>
+                                <div className="font-medium text-gray-900">{ing?.name || 'Unknown'}</div>
+                                <div className="text-xs text-gray-500">
+                                  {di.amount_per_base} {di.unit} {t('perBase')}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeIngredientFromDish(idx)}
+                              className="btn-danger text-xs"
+                              title="Remove"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t pt-4">
+                  <button
+                    onClick={createDish}
+                    className="btn-primary w-full sm:w-auto"
+                    disabled={!newDish.name || !newDish.base_quantity || !newDish.base_unit || dishIngs.length === 0}
+                  >
+                    ✅ {t('createDishButton')}
+                  </button>
+                </div>
+              </>
             )}
           </>
         )}
