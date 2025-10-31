@@ -10,7 +10,7 @@ import PrintIngredientSlip from './pages/PrintIngredientSlip.jsx'
 import PrintOrderSlip from './pages/PrintOrderSlip.jsx'
 import Reports from './pages/Reports.jsx'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://basit-w5ol.onrender.com/api';
 
 function getStoredAuth() {
   const token = localStorage.getItem('token');
