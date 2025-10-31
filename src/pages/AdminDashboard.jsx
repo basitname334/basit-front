@@ -548,13 +548,24 @@ export default function AdminDashboard({ apiBase }) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">{t('baseUnit')}</label>
-                      <input
-                        type="text"
-                        placeholder={t('baseUnitPlaceholder')}
+                      <select
                         className="input-modern w-full"
                         value={newDish.base_unit}
                         onChange={e => setNewDish({...newDish, base_unit: e.target.value})}
-                      />
+                      >
+                        <option value="">Select Unit...</option>
+                        <option value="g">g (Gram)</option>
+                        <option value="kg">kg (Kilogram)</option>
+                        <option value="liter">liter (Liter)</option>
+                        <option value="ml">ml (Milliliter)</option>
+                        <option value="piece">piece</option>
+                        <option value="portion">portion</option>
+                        <option value="serving">serving</option>
+                        <option value="plate">plate</option>
+                        <option value="bowl">bowl</option>
+                        <option value="cup">cup</option>
+                        <option value="pcs">pcs (Pieces)</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">{t('baseQuantity')}</label>
@@ -621,13 +632,24 @@ export default function AdminDashboard({ apiBase }) {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                          <input
-                            type="text"
+                          <select
                             className="input-modern w-full"
                             value={ingredientUnit}
                             onChange={e => setIngredientUnit(e.target.value)}
-                            placeholder="e.g., kg, g, litre"
-                          />
+                          >
+                            <option value="">Select Unit...</option>
+                            <option value="g">g (Gram)</option>
+                            <option value="kg">kg (Kilogram)</option>
+                            <option value="liter">liter (Liter)</option>
+                            <option value="ml">ml (Milliliter)</option>
+                            <option value="piece">piece</option>
+                            <option value="portion">portion</option>
+                            <option value="serving">serving</option>
+                            <option value="plate">plate</option>
+                            <option value="bowl">bowl</option>
+                            <option value="cup">cup</option>
+                            <option value="pcs">pcs (Pieces)</option>
+                          </select>
                         </div>
                       </div>
                       <div className="flex gap-2">
