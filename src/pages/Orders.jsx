@@ -77,8 +77,10 @@ export default function Orders({ apiBase }) {
         if (!displayed.has(primaryOrderId)) {
           // Get all orders in this group
           const groupOrders = ordersList.filter(o => group.orderIds.includes(o.id))
+          // Find the primary order (the one with the groupKey ID)
+          const primaryOrder = groupOrders.find(o => o.id === primaryOrderId) || groupOrders[0]
           result.push({
-            ...order,
+            ...primaryOrder,
             isGrouped: true,
             groupOrders: groupOrders,
             groupSize: group.orderIds.length
