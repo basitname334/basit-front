@@ -337,58 +337,6 @@ export default function PrintIngredientSlip({ apiBase }) {
             )}
           </h2>
           
-          {/* Show ingredients per dish first if grouped */}
-          {data.isGrouped && data.dishesWithIngredients && data.dishesWithIngredients.length > 0 && (
-            <div className="mb-6 space-y-4">
-              {data.dishesWithIngredients.map((dishData, dishIdx) => (
-                <div key={dishIdx} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-3">
-                    {dishData.dish_name} • {dishData.quantity} {dishData.unit}
-                    {dishData.order_id && (
-                      <span className="text-sm font-normal text-blue-600 ml-2">(Order #{dishData.order_id})</span>
-                    )}
-                  </h3>
-                  {dishData.ingredients && dishData.ingredients.length > 0 ? (
-                    <table className="table-modern w-full">
-                      <thead>
-                        <tr>
-                          <th>{t('ingredient')}</th>
-                          <th>{t('amount')}</th>
-                          <th>{t('unit')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dishData.ingredients.map((ing, ingIdx) => {
-                          const amount = Number(ing.amount || 0)
-                          const displayAmount = amount.toFixed(4).replace(/\.?0+$/, '')
-                          return (
-                            <tr key={ingIdx}>
-                              <td className="font-medium">{ing.name || 'Unknown'}</td>
-                              <td className="font-semibold">{displayAmount}</td>
-                              <td>{ing.unit || ''}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p className="text-sm text-gray-500">No ingredients found for this dish</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Show totals section */}
-          {data.isGrouped && (
-            <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-4">
-              <h3 className="text-lg font-bold text-green-900 mb-3">Total Ingredients (Combined)</h3>
-              <p className="text-sm text-green-800 mb-3">
-                <strong>Note:</strong> Same ingredients from different dishes have been added together.
-              </p>
-            </div>
-          )}
-          
           <table className="table-modern w-full">
             <thead>
               <tr>
