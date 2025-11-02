@@ -13,12 +13,65 @@ export default function Orders({ apiBase }) {
   const headers = useAuthHeaders()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [groupedOrders, setGroupedOrders] = useState({})
+
+  // Function to detect and group orders placed at the same time by the same customer
+  function detectOrderGroups(ordersList) {
+    const groups = {}
+    const processed = new Set()
+    
+    // Sort orders by created_at
+    const sortedOrders = [...ordersList].sort((a, b) => 
+      new Date(a.created_at) - new Date(b.created_at)
+    )
+    
+    sortedOrders.forEach(order => {
+      if (processed.has(order.id)) return
+      
+      const orderTime = new Date(order.created_at).getTime()
+      const customerId = order.customer_id
+      
+      // Find orders from same customer within 10 seconds
+      const relatedOrders = sortedOrders.filter(o => {
+        if (processed.has(o.id) || o.id === order.id) return false
+        const oTime = new Date(o.created_at).getTime()
+        const timeDiff = Math.abs(orderTime - oTime)
+        return o.customer_id === customerId && timeDiff <= 10000 // 10 seconds
+      })
+      
+      if (relatedOrders.length > 0) {
+        const groupKey = order.id
+        const groupIds = [order.id, ...relatedOrders.map(o => o.id)]
+        
+        // Store group info
+        groupIds.forEach(id => {
+          groups[id] = { groupKey, orderIds: groupIds }
+          processed.add(id)
+        })
+        
+        // Store in localStorage for slip pages
+        localStorage.setItem(`order_group_${order.id}`, JSON.stringify({ 
+          orderIds: groupIds, 
+          timestamp: orderTime 
+        }))
+      } else {
+        processed.add(order.id)
+      }
+    })
+    
+    return groups
+  }
 
   useEffect(()=>{
     (async ()=>{
       try {
         const res = await fetch(`${apiBase}/orders`, { headers })
-        setOrders(await res.json())
+        const ordersData = await res.json()
+        setOrders(ordersData)
+        
+        // Detect and store order groups
+        const groups = detectOrderGroups(ordersData)
+        setGroupedOrders(groups)
       } catch (error) {
         console.error('Failed to load orders:', error)
       } finally {
@@ -93,57 +146,80 @@ export default function Orders({ apiBase }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map(o=> (
-                    <tr key={o.id} className="hover:bg-gray-50">
-                      <td>
-                        <span className="font-semibold text-indigo-600">#{o.id}</span>
-                      </td>
-                      <td className="hidden sm:table-cell">
-                        <div className="font-medium text-gray-900">{o.customer_name || 'N/A'}</div>
-                        {o.customer_phone && (
-                          <div className="text-xs text-gray-500 flex items-center gap-1"><MdPhone className="text-xs" /> {o.customer_phone}</div>
-                        )}
-                      </td>
-                      <td>
-                        <div className="font-medium text-gray-900">{o.dish_name}</div>
-                        <div className="text-xs text-gray-500 sm:hidden mt-1">
-                          {o.customer_name || 'N/A'}
-                          {o.customer_phone && ` • ☎ ${o.customer_phone}`}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge badge-info whitespace-nowrap">
-                          {o.requested_quantity} {o.requested_unit}
-                        </span>
-                      </td>
-                      <td className="hidden md:table-cell">
-                        <div className="text-sm text-gray-600">
-                          {new Date(o.created_at).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(o.created_at).toLocaleTimeString()}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
-                          <Link 
-                            to={`/orders/${o.id}/ingredient-slip`} 
-                            className="px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors text-center"
-                            title={t('ingredientSlip')}
-                          >
-                            <MdDescription className="inline text-base" /> <span className="hidden sm:inline">{t('ingredientSlip')}</span>
-                          </Link>
-                          <Link 
-                            to={`/orders/${o.id}/order-slip`} 
-                            className="px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors text-center"
-                            title={t('orderSlip')}
-                          >
-                            <MdPrint className="inline text-base" /> <span className="hidden sm:inline">{t('orderSlip')}</span>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {orders.map(o=> {
+                    const group = groupedOrders[o.id]
+                    const primaryOrderId = group ? group.groupKey : o.id
+                    const isGrouped = group && group.orderIds && group.orderIds.length > 1
+                    const isPrimaryOrder = !group || group.groupKey === o.id
+                    
+                    // Skip rendering if this is a grouped order that's not the primary one
+                    // OR render all but mark them as grouped
+                    
+                    return (
+                      <tr 
+                        key={o.id} 
+                        className={`hover:bg-gray-50 ${isGrouped ? 'bg-blue-50/30' : ''} ${!isPrimaryOrder && isGrouped ? 'opacity-75' : ''}`}
+                      >
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-indigo-600">#{o.id}</span>
+                            {isGrouped && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded" title={`Part of group with ${group.orderIds.length} orders`}>
+                                Group ({group.orderIds.length})
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="hidden sm:table-cell">
+                          <div className="font-medium text-gray-900">{o.customer_name || 'N/A'}</div>
+                          {o.customer_phone && (
+                            <div className="text-xs text-gray-500 flex items-center gap-1"><MdPhone className="text-xs" /> {o.customer_phone}</div>
+                          )}
+                        </td>
+                        <td>
+                          <div className="font-medium text-gray-900">{o.dish_name}</div>
+                          <div className="text-xs text-gray-500 sm:hidden mt-1">
+                            {o.customer_name || 'N/A'}
+                            {o.customer_phone && ` • ☎ ${o.customer_phone}`}
+                          </div>
+                          {isGrouped && !isPrimaryOrder && (
+                            <div className="text-xs text-blue-600 mt-1">Grouped with Order #{primaryOrderId}</div>
+                          )}
+                        </td>
+                        <td>
+                          <span className="badge badge-info whitespace-nowrap">
+                            {o.requested_quantity} {o.requested_unit}
+                          </span>
+                        </td>
+                        <td className="hidden md:table-cell">
+                          <div className="text-sm text-gray-600">
+                            {new Date(o.created_at).toLocaleDateString()}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {new Date(o.created_at).toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                            <Link 
+                              to={`/orders/${primaryOrderId}/ingredient-slip`} 
+                              className="px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors text-center"
+                              title={isGrouped ? `Combined ${t('ingredientSlip')} for ${group.orderIds.length} orders` : t('ingredientSlip')}
+                            >
+                              <MdDescription className="inline text-base" /> <span className="hidden sm:inline">{t('ingredientSlip')}</span>
+                            </Link>
+                            <Link 
+                              to={`/orders/${primaryOrderId}/order-slip`} 
+                              className="px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors text-center"
+                              title={isGrouped ? `Combined ${t('orderSlip')} for ${group.orderIds.length} orders` : t('orderSlip')}
+                            >
+                              <MdPrint className="inline text-base" /> <span className="hidden sm:inline">{t('orderSlip')}</span>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

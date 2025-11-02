@@ -19,18 +19,100 @@ export default function PrintOrderSlip({ apiBase }) {
     if (!id) return
     (async ()=>{
       try {
-        const res = await fetch(`${apiBase}/orders/${id}/slips`, { headers })
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}))
-          throw new Error(errorData.error || `Failed to fetch slip data: ${res.status}`)
+        // Check if this order belongs to a group (from localStorage)
+        const groupKey = `order_group_${id}`
+        let groupData = localStorage.getItem(groupKey)
+        let orderIds = [id]
+        
+        // If not in localStorage, try to detect group by fetching all orders
+        if (!groupData) {
+          try {
+            const allOrdersRes = await fetch(`${apiBase}/orders`, { headers })
+            const allOrders = await allOrdersRes.json()
+            
+            // Find current order
+            const currentOrder = allOrders.find(o => o.id === Number(id))
+            if (currentOrder) {
+              const orderTime = new Date(currentOrder.created_at).getTime()
+              const customerId = currentOrder.customer_id
+              
+              // Find orders from same customer within 10 seconds
+              const relatedOrders = allOrders.filter(o => {
+                if (o.id === Number(id)) return false
+                const oTime = new Date(o.created_at).getTime()
+                const timeDiff = Math.abs(orderTime - oTime)
+                return o.customer_id === customerId && timeDiff <= 10000 // 10 seconds
+              })
+              
+              if (relatedOrders.length > 0) {
+                orderIds = [Number(id), ...relatedOrders.map(o => o.id)]
+                // Store in localStorage for future use
+                localStorage.setItem(groupKey, JSON.stringify({ 
+                  orderIds, 
+                  timestamp: orderTime 
+                }))
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to detect order group', e)
+          }
+        } else {
+          try {
+            const group = JSON.parse(groupData)
+            if (group.orderIds && Array.isArray(group.orderIds)) {
+              orderIds = group.orderIds
+            }
+          } catch (e) {
+            console.warn('Failed to parse order group data', e)
+          }
         }
-        const d = await res.json()
-        // Handle different response structures
-        const slipData = d.orderSlip || d.order || d
-        if (!slipData || !slipData.order_id) {
+        
+        // Fetch all orders in the group
+        const orderPromises = orderIds.map(orderId => 
+          fetch(`${apiBase}/orders/${orderId}/slips`, { headers }).then(r => r.json())
+        )
+        
+        const orderData = await Promise.all(orderPromises)
+        
+        // Combine all orders into a single slip
+        const firstOrder = orderData[0]
+        const slipData = firstOrder.orderSlip || firstOrder.order || firstOrder
+        
+        if (!slipData || (!slipData.order_id && !slipData.orderId && !slipData.id)) {
           throw new Error('Invalid slip data received')
         }
-        setData(slipData)
+        
+        // Helper function to convert kg to dish unit for display
+        const getDisplayUnit = (unit) => {
+          if (!unit) return ''
+          const unitLower = unit.toLowerCase().trim()
+          // If unit is kg, convert to 'dish' for display (kg is only for ingredients)
+          if (unitLower === 'kg') return 'dish'
+          return unit
+        }
+        
+        // Add all dishes from the group
+        const allDishes = orderData.map((d, idx) => {
+          const order = d.orderSlip || d.order || d
+          const originalUnit = order.unit || order.requested_unit || ''
+          return {
+            dish_name: order.dish_name || order.dishName,
+            quantity: order.quantity || order.requested_quantity,
+            unit: getDisplayUnit(originalUnit),
+            order_id: order.order_id || order.orderId || order.id || orderIds[idx]
+          }
+        }).filter(d => d.dish_name)
+        
+        // Combine into grouped slip data
+        const groupedData = {
+          ...slipData,
+          order_id: slipData.order_id || slipData.orderId || slipData.id || id,
+          dishes: allDishes,
+          isGrouped: orderIds.length > 1,
+          groupSize: orderIds.length
+        }
+        
+        setData(groupedData)
         setTimeout(()=>window.print(), 300)
       } catch (error) {
         console.error('Failed to load slip:', error)
@@ -81,6 +163,9 @@ export default function PrintOrderSlip({ apiBase }) {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('orderSlip')}</h1>
           <div className="text-lg text-gray-600">
             <p className="font-semibold">{t('orderNumber')}{data.order_id || data.orderId || data.id || 'N/A'}</p>
+            {data.isGrouped && (
+              <p className="text-sm text-gray-500 mt-1">({data.groupSize} {data.groupSize === 1 ? 'dish' : 'dishes'})</p>
+            )}
           </div>
         </div>
         
@@ -95,18 +180,48 @@ export default function PrintOrderSlip({ apiBase }) {
             </div>
           )}
           
-          <div className="grid grid-cols-2 gap-4">
+          {data.dishes && data.dishes.length > 0 ? (
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">{t('dishName')}</p>
-              <p className="text-lg font-semibold text-gray-900">{data.dish_name || data.dishName || 'N/A'}</p>
+              <p className="text-sm font-semibold text-gray-700 mb-3">{data.dishes.length === 1 ? t('dishName') : 'Ordered Dishes'}</p>
+              <div className="space-y-3">
+                {data.dishes.map((dish, idx) => (
+                  <div key={idx} className="bg-white p-3 rounded border border-gray-200">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">{t('dishName')}</p>
+                        <p className="text-base font-semibold text-gray-900">{dish.dish_name || 'N/A'}</p>
+                        {data.isGrouped && dish.order_id && (
+                          <p className="text-xs text-gray-400 mt-1">Order #{dish.order_id}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1">{t('quantity')}</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {dish.quantity || 'N/A'} {dish.unit || ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">{t('quantity')}</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {data.quantity || data.requested_quantity || 'N/A'} {data.unit || data.requested_unit || ''}
-              </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">{t('dishName')}</p>
+                <p className="text-lg font-semibold text-gray-900">{data.dish_name || data.dishName || 'N/A'}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">{t('quantity')}</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {data.quantity || data.requested_quantity || 'N/A'} {(() => {
+                    const unit = data.unit || data.requested_unit || ''
+                    return unit.toLowerCase().trim() === 'kg' ? 'dish' : unit
+                  })()}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
           
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">{t('orderDateTime')}</p>

@@ -84,11 +84,13 @@ export default function CompleteDashboard({ apiBase }) {
       setMessage('This dish is already added. Update quantity instead.')
       return
     }
+    // Store dish unit (not kg - kg is only for ingredients)
+    const dishUnit = dish.base_unit?.toLowerCase() === 'kg' ? 'dish' : dish.base_unit
     setOrderDishes([...orderDishes, {
       dish_id: Number(newDishId),
       dish_name: dish.name,
       quantity: Number(newDishQty),
-      unit: dish.base_unit
+      unit: dishUnit
     }])
     setNewDishId('')
     setNewDishQty('')
@@ -132,16 +134,19 @@ export default function CompleteDashboard({ apiBase }) {
         if (!selectedDish) return null
         
         const overrides = (selectedDish.ingredients || []).map(ing => {
-          const baseQty = Number(selectedDish.base_quantity || 0)
-          const qty = od.quantity
-          const scaleFactor = baseQty > 0 && qty > 0 ? (qty / baseQty) : 0
-          const computed = scaleFactor ? ing.amount_per_base * scaleFactor : 0
+          const qty = Number(od.quantity || 0)
+          // Simple multiplication: if recipe is for base quantity and user orders qty units,
+          // multiply ingredients by qty (add qty times)
+          const computed = qty > 0 ? ing.amount_per_base * qty : 0
           return { 
             ingredient_id: ing.ingredient_id || ing.id, 
             scaled_amount: Number(computed.toFixed(4)), 
             unit: ing.unit 
           }
         })
+        
+        // For API, use original dish base_unit (not the display unit "dish")
+        const apiUnit = selectedDish.base_unit || od.unit
         
         return fetch(`${apiBase}/orders`, { 
           method: 'POST', 
@@ -150,7 +155,7 @@ export default function CompleteDashboard({ apiBase }) {
             dish_id: od.dish_id, 
             customer_id: Number(selectedCustomerId), 
             requested_quantity: od.quantity, 
-            requested_unit: od.unit, 
+            requested_unit: apiUnit, 
             overrides,
             booking_date: bookingDate,
             booking_time: bookingTime,
@@ -170,7 +175,16 @@ export default function CompleteDashboard({ apiBase }) {
         return
       }
       
-      setMessage(`✓ ${results.length} order(s) placed successfully! Order #${results[0].id}`)
+      // Group orders if multiple were placed
+      const orderIds = results.map(r => r.id || r.order_id || r.orderId).filter(Boolean)
+      if (orderIds.length > 1) {
+        localStorage.setItem(`order_group_${orderIds[0]}`, JSON.stringify({ 
+          orderIds, 
+          timestamp: Date.now() 
+        }))
+      }
+      
+      setMessage(`✓ ${results.length} order(s) placed successfully! Order #${orderIds[0]}`)
       setOrderDishes([])
       setDeliveryAddress('')
     } catch (error) {
@@ -376,7 +390,12 @@ export default function CompleteDashboard({ apiBase }) {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
                     <input
                       className="input-modern w-full bg-gray-50"
-                      value={dishes.find(d => d.id === Number(newDishId))?.base_unit || ''}
+                      value={(() => {
+                        const selectedDish = dishes.find(d => d.id === Number(newDishId))
+                        const dishUnit = selectedDish?.base_unit || ''
+                        // Don't show kg in order form - kg is only for ingredients
+                        return dishUnit.toLowerCase() === 'kg' ? 'dish' : dishUnit
+                      })()}
                       readOnly
                       disabled
                     />
@@ -416,6 +435,9 @@ export default function CompleteDashboard({ apiBase }) {
           <div className="space-y-3">
             {orderDishes.map((od, index) => {
               const dish = dishes.find(d => d.id === od.dish_id)
+              const dishUnit = dish?.base_unit || od.unit || ''
+              // Ensure unit is not kg for dish display - kg should only be for ingredients
+              const displayUnit = dishUnit.toLowerCase() === 'kg' ? 'dish' : dishUnit
               return (
                 <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
@@ -436,8 +458,8 @@ export default function CompleteDashboard({ apiBase }) {
                     </div>
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Unit</label>
-                      <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-700">
-                        {od.unit}
+                      <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium">
+                        {displayUnit}
                       </div>
                     </div>
                   </div>
