@@ -84,8 +84,9 @@ export default function CompleteDashboard({ apiBase }) {
       setMessage('This dish is already added. Update quantity instead.')
       return
     }
-    // Store dish unit (not kg - kg is only for ingredients)
-    const dishUnit = dish.base_unit?.toLowerCase() === 'kg' ? 'dish' : dish.base_unit
+    // Convert kg and g to 'dish' for display (these units are for ingredients only)
+    const dishUnitLower = dish.base_unit?.toLowerCase().trim() || ''
+    const dishUnit = (dishUnitLower === 'kg' || dishUnitLower === 'g') ? 'dish' : dish.base_unit
     setOrderDishes([...orderDishes, {
       dish_id: Number(newDishId),
       dish_name: dish.name,
@@ -393,8 +394,9 @@ export default function CompleteDashboard({ apiBase }) {
                       value={(() => {
                         const selectedDish = dishes.find(d => d.id === Number(newDishId))
                         const dishUnit = selectedDish?.base_unit || ''
-                        // Don't show kg in order form - kg is only for ingredients
-                        return dishUnit.toLowerCase() === 'kg' ? 'dish' : dishUnit
+                        // Convert kg and g to 'dish' for display (these units are for ingredients only)
+                        const unitLower = dishUnit.toLowerCase().trim()
+                        return (unitLower === 'kg' || unitLower === 'g') ? 'dish' : dishUnit
                       })()}
                       readOnly
                       disabled
@@ -436,8 +438,9 @@ export default function CompleteDashboard({ apiBase }) {
             {orderDishes.map((od, index) => {
               const dish = dishes.find(d => d.id === od.dish_id)
               const dishUnit = dish?.base_unit || od.unit || ''
-              // Ensure unit is not kg for dish display - kg should only be for ingredients
-              const displayUnit = dishUnit.toLowerCase() === 'kg' ? 'dish' : dishUnit
+              // Convert kg and g to 'dish' for display (these units are for ingredients only)
+              const unitLower = dishUnit.toLowerCase().trim()
+              const displayUnit = (unitLower === 'kg' || unitLower === 'g') ? 'dish' : dishUnit
               return (
                 <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">

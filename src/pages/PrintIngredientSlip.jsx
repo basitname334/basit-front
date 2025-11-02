@@ -298,7 +298,8 @@ export default function PrintIngredientSlip({ apiBase }) {
 
       <div className="bg-white border-2 border-gray-300 rounded-lg p-8 shadow-lg">
         <div className="text-center mb-8 pb-6 border-b-2 border-gray-300">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('ingredientSlip')}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Hassan Cook Chinese Food Specialist</h1>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">{t('ingredientSlip')}</h2>
           <div className="text-lg text-gray-600">
             <p className="font-semibold">{t('orderNumber')}{data.order_id || data.orderId || 'N/A'}</p>
             {data.isGrouped && (

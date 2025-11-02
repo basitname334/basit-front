@@ -14,6 +14,7 @@ export default function Orders({ apiBase }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [groupedOrders, setGroupedOrders] = useState({})
+  const [displayOrders, setDisplayOrders] = useState([])
 
   // Function to detect and group orders placed at the same time by the same customer
   function detectOrderGroups(ordersList) {
@@ -62,6 +63,47 @@ export default function Orders({ apiBase }) {
     return groups
   }
 
+  // Get unique orders (only primary orders from groups, or standalone orders)
+  function getDisplayOrders(ordersList, groups) {
+    const displayed = new Set()
+    const result = []
+    
+    ordersList.forEach(order => {
+      const group = groups[order.id]
+      
+      if (group && group.orderIds && group.orderIds.length > 1) {
+        // This is a grouped order
+        const primaryOrderId = group.groupKey
+        if (!displayed.has(primaryOrderId)) {
+          // Get all orders in this group
+          const groupOrders = ordersList.filter(o => group.orderIds.includes(o.id))
+          result.push({
+            ...order,
+            isGrouped: true,
+            groupOrders: groupOrders,
+            groupSize: group.orderIds.length
+          })
+          displayed.add(primaryOrderId)
+          // Mark all group orders as displayed
+          group.orderIds.forEach(id => displayed.add(id))
+        }
+      } else {
+        // Standalone order
+        if (!displayed.has(order.id)) {
+          result.push({
+            ...order,
+            isGrouped: false,
+            groupOrders: [order],
+            groupSize: 1
+          })
+          displayed.add(order.id)
+        }
+      }
+    })
+    
+    return result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }
+
   useEffect(()=>{
     (async ()=>{
       try {
@@ -72,6 +114,10 @@ export default function Orders({ apiBase }) {
         // Detect and store order groups
         const groups = detectOrderGroups(ordersData)
         setGroupedOrders(groups)
+        
+        // Get display orders (grouped properly)
+        const display = getDisplayOrders(ordersData, groups)
+        setDisplayOrders(display)
       } catch (error) {
         console.error('Failed to load orders:', error)
       } finally {
@@ -105,7 +151,7 @@ export default function Orders({ apiBase }) {
               <p className="text-sm text-gray-500">{t('manageAndView')}</p>
             </div>
           </div>
-          <span className="badge badge-info">{orders.length} {orders.length === 1 ? t('singleOrder') : t('multipleOrders')}</span>
+          <span className="badge badge-info">{displayOrders.length} {displayOrders.length === 1 ? t('singleOrder') : t('multipleOrders')}</span>
         </div>
 
         {loading ? (
@@ -113,7 +159,7 @@ export default function Orders({ apiBase }) {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p className="text-gray-500 mt-3">{t('loadingOrders')}</p>
           </div>
-        ) : orders.length === 0 ? (
+        ) : displayOrders.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
             <MdInbox className="text-5xl mb-3 block mx-auto text-gray-400" />
             <p className="text-gray-500 font-medium">{t('noOrdersYet')}</p>
@@ -188,7 +234,12 @@ export default function Orders({ apiBase }) {
                         </td>
                         <td>
                           <span className="badge badge-info whitespace-nowrap">
-                            {o.requested_quantity} {o.requested_unit}
+                            {o.requested_quantity} {(() => {
+                              const unit = o.requested_unit || ''
+                              const unitLower = unit.toLowerCase().trim()
+                              // Convert kg and g to 'dish' for display (these units are for ingredients only)
+                              return (unitLower === 'kg' || unitLower === 'g') ? 'dish' : unit
+                            })()}
                           </span>
                         </td>
                         <td className="hidden md:table-cell">
