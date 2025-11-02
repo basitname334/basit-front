@@ -192,62 +192,71 @@ export default function Orders({ apiBase }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map(o=> {
-                    const group = groupedOrders[o.id]
-                    const primaryOrderId = group ? group.groupKey : o.id
-                    const isGrouped = group && group.orderIds && group.orderIds.length > 1
-                    const isPrimaryOrder = !group || group.groupKey === o.id
-                    
-                    // Skip rendering if this is a grouped order that's not the primary one
-                    // OR render all but mark them as grouped
+                  {displayOrders.map(orderGroup => {
+                    const primaryOrder = orderGroup
+                    const primaryOrderId = primaryOrder.id
+                    const isGrouped = orderGroup.isGrouped && orderGroup.groupSize > 1
                     
                     return (
                       <tr 
-                        key={o.id} 
-                        className={`hover:bg-gray-50 ${isGrouped ? 'bg-blue-50/30' : ''} ${!isPrimaryOrder && isGrouped ? 'opacity-75' : ''}`}
+                        key={primaryOrderId} 
+                        className={`hover:bg-gray-50 ${isGrouped ? 'bg-blue-50/30' : ''}`}
                       >
                         <td>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-indigo-600">#{o.id}</span>
+                            <span className="font-semibold text-indigo-600">#{primaryOrderId}</span>
                             {isGrouped && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded" title={`Part of group with ${group.orderIds.length} orders`}>
-                                Group ({group.orderIds.length})
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded" title={`Grouped order with ${orderGroup.groupSize} dishes`}>
+                                {orderGroup.groupSize} Dishes
                               </span>
                             )}
                           </div>
                         </td>
                         <td className="hidden sm:table-cell">
-                          <div className="font-medium text-gray-900">{o.customer_name || 'N/A'}</div>
-                          {o.customer_phone && (
-                            <div className="text-xs text-gray-500 flex items-center gap-1"><MdPhone className="text-xs" /> {o.customer_phone}</div>
+                          <div className="font-medium text-gray-900">{primaryOrder.customer_name || 'N/A'}</div>
+                          {primaryOrder.customer_phone && (
+                            <div className="text-xs text-gray-500 flex items-center gap-1"><MdPhone className="text-xs" /> {primaryOrder.customer_phone}</div>
                           )}
                         </td>
                         <td>
-                          <div className="font-medium text-gray-900">{o.dish_name}</div>
-                          <div className="text-xs text-gray-500 sm:hidden mt-1">
-                            {o.customer_name || 'N/A'}
-                            {o.customer_phone && ` • ☎ ${o.customer_phone}`}
+                          <div className="space-y-1">
+                            {orderGroup.groupOrders.map((o, idx) => (
+                              <div key={o.id} className="font-medium text-gray-900">
+                                {o.dish_name}
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {o.requested_quantity} {(() => {
+                                    const unit = o.requested_unit || ''
+                                    const unitLower = unit.toLowerCase().trim()
+                                    return (unitLower === 'kg' || unitLower === 'g') ? 'dish' : unit
+                                  })()}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                          {isGrouped && !isPrimaryOrder && (
-                            <div className="text-xs text-blue-600 mt-1">Grouped with Order #{primaryOrderId}</div>
-                          )}
+                          <div className="text-xs text-gray-500 sm:hidden mt-1">
+                            {primaryOrder.customer_name || 'N/A'}
+                            {primaryOrder.customer_phone && ` • ☎ ${primaryOrder.customer_phone}`}
+                          </div>
                         </td>
                         <td>
-                          <span className="badge badge-info whitespace-nowrap">
-                            {o.requested_quantity} {(() => {
-                              const unit = o.requested_unit || ''
-                              const unitLower = unit.toLowerCase().trim()
-                              // Convert kg and g to 'dish' for display (these units are for ingredients only)
-                              return (unitLower === 'kg' || unitLower === 'g') ? 'dish' : unit
-                            })()}
-                          </span>
+                          <div className="space-y-1">
+                            {orderGroup.groupOrders.map((o, idx) => (
+                              <span key={o.id} className="badge badge-info whitespace-nowrap block">
+                                {o.requested_quantity} {(() => {
+                                  const unit = o.requested_unit || ''
+                                  const unitLower = unit.toLowerCase().trim()
+                                  return (unitLower === 'kg' || unitLower === 'g') ? 'dish' : unit
+                                })()}
+                              </span>
+                            ))}
+                          </div>
                         </td>
                         <td className="hidden md:table-cell">
                           <div className="text-sm text-gray-600">
-                            {new Date(o.created_at).toLocaleDateString()}
+                            {new Date(primaryOrder.created_at).toLocaleDateString()}
                           </div>
                           <div className="text-xs text-gray-400">
-                            {new Date(o.created_at).toLocaleTimeString()}
+                            {new Date(primaryOrder.created_at).toLocaleTimeString()}
                           </div>
                         </td>
                         <td>
@@ -255,14 +264,14 @@ export default function Orders({ apiBase }) {
                             <Link 
                               to={`/orders/${primaryOrderId}/ingredient-slip`} 
                               className="px-2 sm:px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-100 transition-colors text-center"
-                              title={isGrouped ? `Combined ${t('ingredientSlip')} for ${group.orderIds.length} orders` : t('ingredientSlip')}
+                              title={isGrouped ? `Combined ${t('ingredientSlip')} for ${orderGroup.groupSize} dishes` : t('ingredientSlip')}
                             >
                               <MdDescription className="inline text-base" /> <span className="hidden sm:inline">{t('ingredientSlip')}</span>
                             </Link>
                             <Link 
                               to={`/orders/${primaryOrderId}/order-slip`} 
                               className="px-2 sm:px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-100 transition-colors text-center"
-                              title={isGrouped ? `Combined ${t('orderSlip')} for ${group.orderIds.length} orders` : t('orderSlip')}
+                              title={isGrouped ? `Combined ${t('orderSlip')} for ${orderGroup.groupSize} dishes` : t('orderSlip')}
                             >
                               <MdPrint className="inline text-base" /> <span className="hidden sm:inline">{t('orderSlip')}</span>
                             </Link>
