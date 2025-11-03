@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
 import { useI18n } from './i18n.jsx'
-import { MdRestaurant, MdAdminPanelSettings, MdDashboard, MdShoppingCart, MdReceipt, MdBarChart, MdPerson, MdExitToApp, MdMenu, MdClose } from 'react-icons/md'
+import { MdAdminPanelSettings, MdDashboard, MdShoppingCart, MdReceipt, MdBarChart, MdPerson, MdExitToApp, MdMenu, MdClose } from 'react-icons/md'
 import Login from './pages/Login.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import UserDashboard from './pages/UserDashboard.jsx'
@@ -54,9 +54,11 @@ export default function App() {
           <div className="flex items-center justify-between h-16 sm:h-20">
             <div className="flex items-center gap-4 sm:gap-6 flex-1">
               <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                  <MdRestaurant className="text-xl sm:text-2xl text-white" />
-                </div>
+                <img 
+                  src="/WhatsApp Image 2025-11-03 at 02.47.28_ef772163.jpg" 
+                  alt="Logo" 
+                  className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105"
+                />
                 <span className="font-bold text-lg sm:text-xl lg:text-2xl text-gray-900 hidden sm:block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {t('brand')}
                 </span>

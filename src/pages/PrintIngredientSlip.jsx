@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useI18n } from '../i18n.jsx'
-import { MdPhone, MdPrint } from 'react-icons/md'
+import { MdPhone, MdPrint, MdTranslate } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -14,11 +14,140 @@ export default function PrintIngredientSlip({ apiBase }) {
   const headers = useAuthHeaders()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [translateLang, setTranslateLang] = useState('en')
+  const translateElementRef = useRef(null)
+
+  // Load Google Translate script and handle translation
+  useEffect(() => {
+    let script = null
+    let isInitialized = false
+
+    const initializeTranslate = () => {
+      if (isInitialized || !translateElementRef.current) return
+      
+      try {
+        if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+          new window.google.translate.TranslateElement(
+            {
+              pageLanguage: 'en',
+              includedLanguages: 'en,ur',
+              layout: window.google.translate.TranslateElement.InlineLayout.HORIZONTAL,
+              autoDisplay: false,
+              multilanguagePage: true
+            },
+            translateElementRef.current
+          )
+          isInitialized = true
+        }
+      } catch (e) {
+        console.warn('Error initializing Google Translate:', e)
+      }
+    }
+
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src*="translate.google.com"]')
+    if (existingScript) {
+      // Script exists, check if Google Translate is ready
+      if (window.google && window.google.translate) {
+        initializeTranslate()
+      } else {
+        // Wait for script to load
+        existingScript.addEventListener('load', initializeTranslate)
+      }
+      return
+    }
+
+    // Create and load the script
+    script = document.createElement('script')
+    script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'
+    script.async = true
+    
+    // Set up callback
+    window.googleTranslateElementInit = () => {
+      initializeTranslate()
+    }
+    
+    script.onload = initializeTranslate
+    document.body.appendChild(script)
+    
+    return () => {
+      if (script && script.parentNode) {
+        script.parentNode.removeChild(script)
+      }
+      if (window.googleTranslateElementInit) {
+        delete window.googleTranslateElementInit
+      }
+      const select = document.querySelector('.goog-te-combo')
+      if (select) {
+        select.remove()
+      }
+    }
+  }, [])
+
+  // Handle translation when language changes
+  useEffect(() => {
+    if (!window.google || !window.google.translate || translateLang === 'en') {
+      // Reset to English if needed
+      if (translateLang === 'en') {
+        const iframe = document.querySelector('.goog-te-banner-frame')
+        if (iframe) {
+          const select = document.querySelector('.goog-te-combo')
+          if (select && select.value !== 'en') {
+            select.value = 'en'
+            select.dispatchEvent(new Event('change'))
+          }
+        }
+      }
+      return
+    }
+    
+    // Wait a bit for the widget to be ready
+    const timer = setTimeout(() => {
+      const select = document.querySelector('.goog-te-combo')
+      if (select) {
+        // Map our language code to Google Translate language code
+        const langCode = translateLang === 'ur' ? 'ur' : 'en'
+        
+        // Check if already set to avoid unnecessary changes
+        if (select.value !== langCode) {
+          select.value = langCode
+          
+          // Trigger the change event to apply translation
+          const event = new Event('change', { bubbles: true })
+          select.dispatchEvent(event)
+          
+          // Also try click to ensure it triggers
+          select.click()
+        }
+      }
+    }, 200)
+    
+    return () => clearTimeout(timer)
+  }, [translateLang])
 
   useEffect(()=>{
     if (!id) return
     (async ()=>{
       try {
+        // Fetch all ingredients and categories first to get category mapping
+        const [ingredientsRes, categoriesRes] = await Promise.all([
+          fetch(`${apiBase}/ingredients`, { headers }),
+          fetch(`${apiBase}/categories`, { headers })
+        ])
+        const allIngredients = await ingredientsRes.json()
+        const allCategories = await categoriesRes.json()
+        
+        // Create mapping: ingredient name -> category info
+        const ingredientCategoryMap = new Map()
+        allIngredients.forEach(ing => {
+          const category = allCategories.find(cat => cat.id === ing.category_id)
+          ingredientCategoryMap.set(ing.name.toLowerCase().trim(), {
+            category_id: ing.category_id,
+            category_name: category ? category.name : 'Uncategorized',
+            ingredient_name: ing.name
+          })
+        })
+        
         // Check if this order belongs to a group (from localStorage)
         const groupKey = `order_group_${id}`
         let groupData = localStorage.getItem(groupKey)
@@ -77,35 +206,13 @@ export default function PrintIngredientSlip({ apiBase }) {
         // Debug: Log the raw API response structure
         console.log('Order data from API:', orderData)
         
-        // Get ingredient data from all orders - organized by dish first, then totals
-        const dishInfo = []
-        const dishesWithIngredients = [] // Array of { dish_name, quantity, unit, order_id, ingredients: [] }
-        const ingredientTotalMap = new Map() // For final totals
+        // Get ingredient data from all orders - organized by category
+        const ingredientTotalMap = new Map() // For final totals by ingredient name + unit
         
         orderData.forEach((d, idx) => {
           // Try multiple ways to get the data structure
           const slip = d.ingredientSlip || d.ingredients || d
           const order = d.orderSlip || d.order || d
-          
-          // Debug: Log the structure for this order
-          console.log(`Processing order ${orderIds[idx]}:`, { slip, order })
-          
-          // Helper to convert kg to dish unit for display
-          const getDisplayUnit = (unit) => {
-            if (!unit) return ''
-            const unitLower = unit.toLowerCase().trim()
-            if (unitLower === 'kg') return 'dish'
-            return unit
-          }
-          
-          const currentDishInfo = {
-            dish_name: order.dish_name || order.dishName,
-            quantity: order.quantity || order.requested_quantity,
-            unit: getDisplayUnit(order.unit || order.requested_unit),
-            order_id: order.order_id || order.orderId || order.id || orderIds[idx]
-          }
-          
-          dishInfo.push(currentDishInfo)
           
           // Get items from different possible structures
           let items = []
@@ -120,16 +227,6 @@ export default function PrintIngredientSlip({ apiBase }) {
           } else if (d.ingredients) {
             items = Array.isArray(d.ingredients) ? d.ingredients : []
           }
-          
-          // Debug: log items if needed
-          if (items.length === 0) {
-            console.warn(`No ingredients found for order ${orderIds[idx]}`, { slip, order, fullData: d })
-          } else {
-            console.log(`Found ${items.length} ingredients for order ${orderIds[idx]}`)
-          }
-          
-          // Process ingredients for this dish
-          const dishIngredients = []
           
           items.forEach(item => {
             // Normalize ingredient name (trim, lowercase for comparison) and unit
@@ -167,31 +264,24 @@ export default function PrintIngredientSlip({ apiBase }) {
             } else if (item.total_amount !== undefined) {
               amount = Number(item.total_amount)
             } else if (item.amount_per_base !== undefined) {
-              // This is base amount, we need scaled - but if we only have this, use it
               amount = Number(item.amount_per_base)
               console.warn(`Using base amount for ${ingredientName}, may need scaling:`, item)
             }
             
             // Only process if we have a valid amount and name
-            if (isNaN(amount)) {
-              console.warn(`Invalid amount (NaN) for ingredient ${ingredientName}:`, item)
+            if (isNaN(amount) || amount <= 0) {
               return
             }
             
-            if (amount <= 0) {
-              console.warn(`Zero or negative amount for ingredient ${ingredientName}:`, amount, item)
-              return
+            // Get category info from mapping
+            const normalizedName = ingredientName.toLowerCase().trim()
+            const categoryInfo = ingredientCategoryMap.get(normalizedName) || {
+              category_id: null,
+              category_name: 'Uncategorized',
+              ingredient_name: ingredientName
             }
             
-            // Add to dish ingredients
-            dishIngredients.push({
-              name: ingredientName,
-              amount: Number(amount.toFixed(4)),
-              unit: ingredientUnit
-            })
-            
-            // Also add to total map for aggregation
-            const normalizedName = ingredientName.toLowerCase().replace(/\s+/g, ' ').trim()
+            // Aggregate by ingredient name + unit
             const normalizedUnit = ingredientUnit.toLowerCase().trim()
             const key = `${normalizedName}_${normalizedUnit}`
             
@@ -200,53 +290,50 @@ export default function PrintIngredientSlip({ apiBase }) {
               existing.amount = Number((existing.amount + amount).toFixed(4))
             } else {
               ingredientTotalMap.set(key, {
-                name: ingredientName,
+                name: categoryInfo.ingredient_name,
                 amount: Number(amount.toFixed(4)),
-                unit: ingredientUnit
+                unit: ingredientUnit,
+                category_id: categoryInfo.category_id,
+                category_name: categoryInfo.category_name
               })
             }
           })
-          
-          // Sort ingredients by name for this dish
-          dishIngredients.sort((a, b) => a.name.localeCompare(b.name))
-          
-          dishesWithIngredients.push({
-            ...currentDishInfo,
-            ingredients: dishIngredients
-          })
         })
         
-        // Convert total map to array and sort by name
-        const allIngredients = Array.from(ingredientTotalMap.values())
-        allIngredients.sort((a, b) => a.name.localeCompare(b.name))
+        // Group ingredients by category
+        const ingredientsByCategory = new Map()
+        ingredientTotalMap.forEach((ing) => {
+          const catName = ing.category_name || 'Uncategorized'
+          if (!ingredientsByCategory.has(catName)) {
+            ingredientsByCategory.set(catName, [])
+          }
+          ingredientsByCategory.get(catName).push(ing)
+        })
         
-        // Debug: log total ingredients
-        console.log(`Total unique ingredients after aggregation: ${allIngredients.length}`, allIngredients)
+        // Sort ingredients within each category by name
+        ingredientsByCategory.forEach((ings, catName) => {
+          ings.sort((a, b) => a.name.localeCompare(b.name))
+        })
+        
+        // Convert to array of categories with ingredients, sorted by category name
+        const categoriesWithIngredients = Array.from(ingredientsByCategory.entries())
+          .map(([category_name, ingredients]) => ({ category_name, ingredients }))
+          .sort((a, b) => a.category_name.localeCompare(b.category_name))
         
         // Get base data from first order
         const firstOrder = orderData[0]
-        const slipData = firstOrder.ingredientSlip || firstOrder.ingredients || firstOrder
         const orderInfo = firstOrder.orderSlip || firstOrder.order || firstOrder
         
         const groupedData = {
-          ...slipData,
           order_id: orderInfo.order_id || orderInfo.orderId || orderInfo.id || id,
-          dish_name: orderInfo.dish_name || orderInfo.dishName,
-          quantity: orderInfo.quantity || orderInfo.requested_quantity,
-          unit: orderInfo.unit || orderInfo.requested_unit,
           customer_name: orderInfo.customer_name || orderInfo.customerName,
           customer_phone: orderInfo.customer_phone || orderInfo.customerPhone,
-          items: allIngredients,
-          ingredients: allIngredients,
-          dishes: dishInfo,
-          dishesWithIngredients: dishesWithIngredients, // Ingredients per dish
+          categoriesWithIngredients: categoriesWithIngredients,
           isGrouped: orderIds.length > 1,
-          groupSize: orderIds.length,
-          requested_quantity: orderInfo.requested_quantity || orderInfo.quantity,
-          requested_unit: orderInfo.requested_unit || orderInfo.unit
+          groupSize: orderIds.length
         }
         
-        if (!groupedData.items || groupedData.items.length === 0) {
+        if (categoriesWithIngredients.length === 0) {
           console.warn('No ingredients found in slip data')
         }
         
@@ -285,96 +372,172 @@ export default function PrintIngredientSlip({ apiBase }) {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="no-print mb-6">
-        <Link to="/orders" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">← {t('backToOrders')}</Link>
-        <button 
-          onClick={() => window.print()} 
-          className="btn-primary ml-4"
-        >
-          <MdPrint className="inline text-base" /> {t('print')}
-        </button>
+    <>
+      <style>{`
+        @media print {
+          @page {
+            size: legal;
+            margin: 0.5in;
+          }
+          .page-break {
+            page-break-after: always;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          /* Hide Google Translate elements when printing */
+          .goog-te-banner-frame,
+          .goog-te-menu-frame,
+          .skiptranslate {
+            display: none !important;
+          }
+          body {
+            top: 0 !important;
+          }
+        }
+        .print-container {
+          width: 8.5in;
+          min-height: 14in;
+          margin: 0 auto;
+        }
+        .page {
+          min-height: 13in;
+          padding: 0.5in;
+          box-sizing: border-box;
+        }
+        /* Hide Google Translate banner */
+        .goog-te-banner-frame {
+          display: none !important;
+        }
+        .goog-te-menu-frame {
+          max-width: 100% !important;
+        }
+        body {
+          top: 0 !important;
+        }
+        /* Hide the "Select Language" text */
+        .goog-te-gadget {
+          color: transparent !important;
+        }
+        .goog-te-gadget .goog-te-combo {
+          margin: 0 !important;
+        }
+        .skiptranslate {
+          display: none !important;
+        }
+      `}</style>
+      
+      <div className="no-print mb-6 max-w-4xl mx-auto px-8">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <Link to="/orders" className="text-blue-600 hover:text-blue-800 inline-block">← {t('backToOrders')}</Link>
+          <button 
+            onClick={() => window.print()} 
+            className="btn-primary"
+          >
+            <MdPrint className="inline text-base" /> {t('print')}
+          </button>
+          <div className="flex items-center gap-2 ml-auto">
+            <MdTranslate className="text-lg text-gray-600" />
+            <label className="text-sm font-medium text-gray-700">Translate Page:</label>
+            <select
+              value={translateLang}
+              onChange={(e) => setTranslateLang(e.target.value)}
+              className="border-2 border-gray-200 px-3 py-1.5 rounded-lg text-sm bg-white shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            >
+              <option value="en">English</option>
+              <option value="ur">اردو (Urdu)</option>
+            </select>
+          </div>
+        </div>
+        {/* Google Translate Element - hidden from view but functional */}
+        <div ref={translateElementRef} style={{ display: 'none' }}></div>
       </div>
 
-      <div className="bg-white border-2 border-gray-300 rounded-lg p-8 shadow-lg">
-        <div className="text-center mb-8 pb-6 border-b-2 border-gray-300">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Hassan Cook Chinese Food Specialist</h1>
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">{t('ingredientSlip')}</h2>
-          <div className="text-lg text-gray-600">
-            <p className="font-semibold">{t('orderNumber')}{data.order_id || data.orderId || 'N/A'}</p>
-            {data.isGrouped && (
-              <p className="text-sm text-gray-500 mt-1">({data.groupSize} {data.groupSize === 1 ? 'dish' : 'dishes'} - Combined Ingredients)</p>
-            )}
-            {data.dishes && data.dishes.length > 0 ? (
-              <div className="mt-2 space-y-1">
-                {data.dishes.map((dish, idx) => (
-                  <p key={idx} className="text-sm">
-                    {dish.dish_name || 'N/A'} • {dish.quantity || 'N/A'} {dish.unit || ''}
-                  </p>
-                ))}
-              </div>
+      <div className="print-container">
+        <div className="bg-white border-2 border-gray-300 rounded-lg shadow-lg page">
+          {/* Header - Print on first page only */}
+          <div className="text-center mb-6 pb-4 border-b-2 border-gray-300">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Hassan Cook Chinese Food Specialist</h1>
+            <h2 className="text-xl font-semibold text-gray-700 mb-3">{t('ingredientSlip')}</h2>
+            <div className="text-base text-gray-600">
+              <p className="font-semibold">{t('orderNumber')}{data.order_id || data.orderId || 'N/A'}</p>
+              {data.isGrouped && (
+                <p className="text-xs text-gray-500 mt-1">({data.groupSize} {data.groupSize === 1 ? 'dish' : 'dishes'} - Combined Ingredients)</p>
+              )}
+              {data.customer_name && (
+                <div className="mt-2 pt-2 border-t border-gray-300">
+                  <p className="font-semibold text-gray-800 text-sm">Customer: {data.customer_name || 'N/A'}</p>
+                  {data.customer_phone && <p className="text-xs text-gray-600 flex items-center gap-1 justify-center mt-1"><MdPhone className="text-xs" /> {data.customer_phone}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Ingredients grouped by category */}
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+              {t('requiredIngredients')}
+            </h2>
+            
+            {data.categoriesWithIngredients && data.categoriesWithIngredients.length > 0 ? (
+              data.categoriesWithIngredients.map((categoryData, catIdx) => {
+                const isLastCategory = catIdx === data.categoriesWithIngredients.length - 1
+                const shouldPageBreak = catIdx > 0 && catIdx % 3 === 0 // Page break after every 3 categories
+                
+                return (
+                  <div key={catIdx} className={shouldPageBreak ? 'page-break' : ''}>
+                    <div className="mb-4">
+                      <h3 className="text-base font-bold text-gray-900 mb-2 pb-1 border-b border-gray-300 bg-gray-50 px-2 py-1">
+                        {categoryData.category_name}
+                      </h3>
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 px-3 py-2 text-left text-sm font-semibold text-gray-700">{t('ingredient')}</th>
+                            <th className="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-gray-700">{t('amount')}</th>
+                            <th className="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-gray-700">{t('unit')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {categoryData.ingredients.map((ing, ingIdx) => {
+                            const amount = Number(ing.amount || 0)
+                            const displayAmount = amount.toFixed(4).replace(/\.?0+$/, '')
+                            
+                            return (
+                              <tr key={ingIdx} className="hover:bg-gray-50">
+                                <td className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-900">
+                                  {ing.name || 'Unknown'}
+                                </td>
+                                <td className="border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-800 text-center">
+                                  {displayAmount}
+                                </td>
+                                <td className="border border-gray-300 px-3 py-2 text-sm text-gray-700 text-center">
+                                  {ing.unit || ''}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {!isLastCategory && <div className="mb-3"></div>}
+                  </div>
+                )
+              })
             ) : (
-              <p className="mt-1">
-                {data.dish_name || data.dishName || 'N/A'} • {data.requested_quantity || data.quantity || 'N/A'} {(() => {
-                  const unit = data.requested_unit || data.unit || ''
-                  return unit.toLowerCase().trim() === 'kg' ? 'dish' : unit
-                })()}
-              </p>
-            )}
-            {data.customer_name && (
-              <div className="mt-3 pt-3 border-t border-gray-300 text-base">
-                <p className="font-semibold text-gray-800">Customer: {data.customer_name || data.customerName || 'N/A'}</p>
-                {data.customer_phone && <p className="text-sm text-gray-600 flex items-center gap-1 justify-center"><MdPhone className="text-base" /> {data.customer_phone}</p>}
+              <div className="text-center text-gray-500 py-8">
+                <p>No ingredients found</p>
               </div>
             )}
           </div>
-        </div>
-        
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            {t('requiredIngredients')}
-            {data.isGrouped && (
-              <span className="text-sm font-normal text-gray-500 ml-2">({data.groupSize} {data.groupSize === 1 ? 'dish' : 'dishes'})</span>
-            )}
-          </h2>
-          
-          <table className="table-modern w-full">
-            <thead>
-              <tr>
-                <th>{t('ingredient')}</th>
-                <th>{t('amount')}</th>
-                <th>{t('unit')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.items || data.ingredients || []).length > 0 ? (
-                (data.items || data.ingredients || []).map((x,idx)=> {
-                  // Ensure we get the correct amount
-                  const amount = Number(x.amount || x.scaled_amount || x.scaledAmount || 0)
-                  // Round to 4 decimal places, but remove trailing zeros
-                  const displayAmount = amount.toFixed(4).replace(/\.?0+$/, '')
-                  
-                  return (
-                    <tr key={idx}>
-                      <td className="font-medium">{x.name || x.ingredient_name || 'Unknown'}</td>
-                      <td className="font-semibold">{displayAmount}</td>
-                      <td>{x.unit || ''}</td>
-                    </tr>
-                  )
-                })
-              ) : (
-                <tr>
-                  <td colSpan="3" className="text-center text-gray-500 py-4">No ingredients found</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-300 text-sm text-gray-500 text-center">
-          <p>{t('generatedOn')} {new Date().toLocaleString()}</p>
+          {/* Footer */}
+          <div className="mt-6 pt-4 border-t border-gray-300 text-xs text-gray-500 text-center">
+            <p>{t('generatedOn')} {new Date().toLocaleString()}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
