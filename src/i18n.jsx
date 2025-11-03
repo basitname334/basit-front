@@ -42,6 +42,7 @@ const dictionaries = {
     costPerBasePlaceholder: 'e.g., 450.00 (PKR)',
     costPerBaseDesc: 'Estimated cost in PKR to produce each base quantity',
     addIngredientToDish: 'Add Ingredient to Dish',
+    addIngredientsFirst: 'Please add ingredients first before adding them to a dish.',
     noIngredientsAddedToDish: 'No ingredients added to this dish yet. Click "Add Ingredient to Dish" above to start building your recipe.',
     dishIngredients: 'Dish Ingredients',
     selectIngredient: 'Select ingredient...',
@@ -153,11 +154,8 @@ const dictionaries = {
     failedToLoad: 'Failed to load',
     requiredIngredients: 'Required Ingredients',
     amount: 'Amount',
-    unit: 'Unit',
     orderDateTime: 'Order Date & Time',
     generatedOn: 'Generated on',
-    ingredientSlip: 'Ingredient Slip',
-    orderSlip: 'Order Slip',
   },
   ur: {
     brand: 'حسن کُک چائنیز فوڈ اسپیشلسٹ',
@@ -200,6 +198,7 @@ const dictionaries = {
     costPerBasePlaceholder: 'مثلاً 450.00 (پاکستانی روپیہ)',
     costPerBaseDesc: 'فی بنیادی مقدار پیدا کرنے کی تخمینی لاگت پاکستانی روپیہ میں',
     addIngredientToDish: 'ڈش میں جزو شامل کریں',
+    addIngredientsFirst: 'براہ کرم ڈش میں شامل کرنے سے پہلے پہلے اجزاء شامل کریں۔',
     noIngredientsAddedToDish: 'ابھی تک اس ڈش میں کوئی اجزاء شامل نہیں کیے گئے۔ اپنی ترکیب بنانا شروع کرنے کے لیے اوپر "ڈش میں جزو شامل کریں" پر کلک کریں۔',
     dishIngredients: 'ڈش کے اجزاء',
     selectIngredient: 'جزو منتخب کریں...',
@@ -311,11 +310,10 @@ const dictionaries = {
     failedToLoad: 'لوڈ کرنے میں ناکام',
     requiredIngredients: 'ضروری اجزاء',
     amount: 'مقدار',
-    unit: 'یونٹ',
+    orderNumber: 'آرڈر #',
+    dishName: 'ڈش کا نام',
     orderDateTime: 'آرڈر کی تاریخ اور وقت',
     generatedOn: 'بنایا گیا',
-    ingredientSlip: 'اجزاء کی پرچی',
-    orderSlip: 'آرڈر پرچی',
   }
 }
 

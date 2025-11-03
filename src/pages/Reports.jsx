@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../i18n.jsx'
-import { MdBarChart } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -42,7 +41,7 @@ export default function Reports({ apiBase }) {
             <h1 className="text-3xl font-bold mb-1">{t('financialReports')}</h1>
             <p className="text-orange-100">{t('trackOrders')}</p>
           </div>
-          <MdBarChart className="text-4xl" />
+          <div className="text-4xl">💹</div>
         </div>
       </div>
 

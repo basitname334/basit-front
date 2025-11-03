@@ -161,40 +161,7 @@
   }
   
   .card {
-    box-shadow: none !important;
-    border-color: #d1d5db !important;
-  }
-  
-  body {
-    background-color: white !important;
-  }
-  
-  @page {
-    margin: 0.5cm;
-    size: A4;
-  }
-  
-  .bg-white {
-    background-color: white !important;
-  }
-  
-  .border-gray-300 {
-    border-color: #1f2937 !important;
-  }
-  
-  .text-gray-900 {
-    color: #000000 !important;
-  }
-  
-  .text-gray-600, .text-gray-700 {
-    color: #374151 !important;
-  }
-  
-  /* Ensure print quality */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
+    @apply shadow-none border-gray-300;
   }
 }
 

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n.jsx'
-import { MdShoppingCart, MdCheckCircle, MdWarning, MdReceipt, MdRestaurant, MdDashboard } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -71,7 +70,7 @@ export default function UserDashboard({ apiBase }) {
         setLoading(false)
         return 
       }
-      setMessage({ type: 'success', text: `✓ ${t('orderPlacedSuccess', { id: data.id })}` })
+      setMessage({ type: 'success', text: `✅ ${t('orderPlacedSuccess', { id: data.id })}` })
       setQty('')
       setLoading(false)
     } catch (error) {
@@ -89,7 +88,7 @@ export default function UserDashboard({ apiBase }) {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">{t('newOrder')}</h1>
             <p className="text-sm sm:text-base text-green-100">{t('newOrderSubtitle')}</p>
           </div>
-          <MdShoppingCart className="text-3xl sm:text-4xl lg:text-5xl" />
+          <div className="text-3xl sm:text-4xl lg:text-5xl">🛒</div>
         </div>
       </div>
 
@@ -146,7 +145,7 @@ export default function UserDashboard({ apiBase }) {
               )}
             </select>
             {customers.length === 0 && (
-              <p className="text-xs text-orange-600 mt-1 flex items-center gap-1"><MdWarning className="text-sm" /> Please ask admin to add customers first.</p>
+              <p className="text-xs text-orange-600 mt-1">⚠️ Please ask admin to add customers first.</p>
             )}
           </div>
 
@@ -171,7 +170,7 @@ export default function UserDashboard({ apiBase }) {
               )}
             </select>
             {dishes.length === 0 && (
-              <p className="text-xs text-orange-600 mt-1 flex items-center gap-1"><MdWarning className="text-sm" /> {t('askAdminToCreate')}</p>
+              <p className="text-xs text-orange-600 mt-1">⚠️ {t('askAdminToCreate')}</p>
             )}
           </div>
 
@@ -209,7 +208,7 @@ export default function UserDashboard({ apiBase }) {
           {selectedDish && scaleFactor && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <MdDashboard className="text-lg" />
+                <span className="text-lg">📊</span>
                 <span className="font-semibold text-blue-900">{t('scalingInformation')}</span>
               </div>
               <div className="text-sm text-blue-800 space-y-1">
@@ -225,7 +224,7 @@ export default function UserDashboard({ apiBase }) {
           {selectedDish && scaleFactor && selectedDish.ingredients?.length > 0 && (
             <div className="mt-5">
               <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <MdReceipt className="text-base" />
+                <span>📋</span>
                 <span>{t('ingredientPreview')}</span>
               </h3>
               <p className="text-sm text-gray-600 mb-3">{t('ingredientsNeeded')}</p>
@@ -259,13 +258,13 @@ export default function UserDashboard({ apiBase }) {
               className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading || !selectedDish || !qty || requestedQty <= 0}
             >
-              {loading ? `${t('placingOrder')}...` : <><MdCheckCircle className="inline text-base" /> {t('placeOrderButton')}</>}
+              {loading ? `⏳ ${t('placingOrder')}` : `✅ ${t('placeOrderButton')}`}
             </button>
             <Link 
               to="/orders" 
               className="btn-secondary text-center"
             >
-              <MdReceipt className="inline text-base" /> {t('viewOrdersButton')}
+              📋 {t('viewOrdersButton')}
             </Link>
           </div>
         </div>
@@ -276,7 +275,7 @@ export default function UserDashboard({ apiBase }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="card bg-gradient-to-br from-blue-50 to-blue-100">
             <div className="flex items-center gap-3">
-              <MdRestaurant className="text-3xl text-gray-400" />
+              <div className="text-3xl">🍽️</div>
               <div>
                 <p className="text-2xl font-bold text-blue-900">{dishes.length}</p>
                 <p className="text-sm text-blue-700">{t('availableDishes')}</p>

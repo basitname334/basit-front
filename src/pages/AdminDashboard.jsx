@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../i18n.jsx'
-import { MdAdminPanelSettings, MdFolder, MdRestaurantMenu, MdPeople, MdRestaurant, MdAdd, MdDelete, MdCheckCircle, MdError, MdWarning, MdPhone, MdEmail, MdLocationOn, MdLocalDining } from 'react-icons/md'
 
 function useAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -29,8 +28,7 @@ export default function AdminDashboard({ apiBase }) {
   const [expandedSections, setExpandedSections] = useState({
     categories: false,
     ingredients: false,
-    customers: false,
-    dishes: false
+    customers: false
   })
 
   async function load() {
@@ -54,11 +52,25 @@ export default function AdminDashboard({ apiBase }) {
   }
 
   async function addCategory() {
-    if (!newCategory.trim()) return
+    const trimmed = newCategory.trim()
+    if (!trimmed) {
+      showMessage('error', t('error') + ': name required')
+      return
+    }
+    // Client-side duplicate check (case-insensitive)
+    const exists = categories.some(c => (c.name || '').trim().toLowerCase() === trimmed.toLowerCase())
+    if (exists) {
+      showMessage('error', 'Category already exists')
+      return
+    }
     try {
-      const res = await fetch(`${apiBase}/categories`, { method: 'POST', headers, body: JSON.stringify({ name: newCategory.trim() }) })
+      const res = await fetch(`${apiBase}/categories`, { method: 'POST', headers, body: JSON.stringify({ name: trimmed }) })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed')
+      if (!res.ok) {
+        // Handle duplicate specifically (from backend 409)
+        if (res.status === 409) throw new Error('Category already exists')
+        throw new Error(data.error || 'Failed')
+      }
       showMessage('success', t('categoryCreated'))
       setNewCategory('')
       load()
@@ -155,68 +167,6 @@ export default function AdminDashboard({ apiBase }) {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
   }
 
-  function addIngredientToDish() {
-    if (!selectedIngredientForAdd || !ingredientAmount || !ingredientUnit) {
-      showMessage('error', t('pleaseFillIngredientFields'))
-      return
-    }
-    if (dishIngs.some(di => di.ingredient_id === selectedIngredientForAdd.id)) {
-      showMessage('error', 'This ingredient is already added')
-      return
-    }
-    setDishIngs([...dishIngs, {
-      ingredient_id: selectedIngredientForAdd.id,
-      amount_per_base: Number(ingredientAmount),
-      unit: ingredientUnit
-    }])
-    setSelectedIngredientForAdd(null)
-    setIngredientAmount('')
-    setIngredientUnit('')
-    setShowIngredientSelector(false)
-    showMessage('success', t('ingredientAdded'))
-  }
-
-  function removeIngredientFromDish(index) {
-    setDishIngs(dishIngs.filter((_, i) => i !== index))
-  }
-
-  async function createDish() {
-    if (!newDish.name.trim()) {
-      showMessage('error', t('pleaseFillAllFields'))
-      return
-    }
-    if (!newDish.base_quantity || !newDish.base_unit) {
-      showMessage('error', t('pleaseFillAllFields'))
-      return
-    }
-    if (dishIngs.length === 0) {
-      showMessage('error', t('pleaseAddIngredient'))
-      return
-    }
-    try {
-      const res = await fetch(`${apiBase}/dishes`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          name: newDish.name.trim(),
-          base_quantity: Number(newDish.base_quantity),
-          base_unit: newDish.base_unit.trim(),
-          price_per_base: newDish.price_per_base ? Number(newDish.price_per_base) : null,
-          cost_per_base: newDish.cost_per_base ? Number(newDish.cost_per_base) : null,
-          ingredients: dishIngs
-        })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed')
-      showMessage('success', t('dishCreated'))
-      setNewDish({ name: '', base_quantity: '', base_unit: '', price_per_base: '', cost_per_base: '' })
-      setDishIngs([])
-      load()
-    } catch (error) {
-      showMessage('error', error.message || t('failedToCreate'))
-    }
-  }
-
   async function deleteDish(id){
     if (!confirm(t('sureDeleteDish'))) return
     try {
@@ -237,7 +187,7 @@ export default function AdminDashboard({ apiBase }) {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1">{t('adminDashboard')}</h1>
             <p className="text-sm sm:text-base text-blue-100">{t('adminSubtitle')}</p>
           </div>
-          <MdAdminPanelSettings className="text-3xl sm:text-4xl lg:text-5xl" />
+          <div className="text-3xl sm:text-4xl lg:text-5xl">👨‍💼</div>
         </div>
       </div>
 
@@ -248,26 +198,26 @@ export default function AdminDashboard({ apiBase }) {
             ? 'bg-green-50 border-green-400 text-green-800' 
             : 'bg-red-50 border-red-400 text-red-800'
         }`}>
-          <strong className="flex items-center gap-1">{message.type === 'success' ? <><MdCheckCircle className="text-base" /> {t('success')}:</> : <><MdError className="text-base" /> {t('error')}:</>}</strong> {message.text}
+          <strong>{message.type === 'success' ? `✓ ${t('success')}:` : `✗ ${t('error')}:`}</strong> {message.text}
         </div>
       )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <div className="text-sm text-purple-700 font-medium mb-1 flex items-center gap-1"><MdFolder className="text-base" /> Categories</div>
+          <div className="text-sm text-purple-700 font-medium mb-1">📁 Categories</div>
           <div className="text-2xl sm:text-3xl font-bold text-purple-900">{categories.length}</div>
         </div>
         <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <div className="text-sm text-green-700 font-medium mb-1 flex items-center gap-1"><MdRestaurantMenu className="text-base" /> Ingredients</div>
+          <div className="text-sm text-green-700 font-medium mb-1">🥬 Ingredients</div>
           <div className="text-2xl sm:text-3xl font-bold text-green-900">{ingredients.length}</div>
         </div>
         <div className="card bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <div className="text-sm text-orange-700 font-medium mb-1 flex items-center gap-1"><MdPeople className="text-base" /> Customers</div>
+          <div className="text-sm text-orange-700 font-medium mb-1">👥 Customers</div>
           <div className="text-2xl sm:text-3xl font-bold text-orange-900">{customers.length}</div>
         </div>
         <div className="card bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
-          <div className="text-sm text-indigo-700 font-medium mb-1 flex items-center gap-1"><MdRestaurant className="text-base" /> Dishes</div>
+          <div className="text-sm text-indigo-700 font-medium mb-1">🍽️ Dishes</div>
           <div className="text-2xl sm:text-3xl font-bold text-indigo-900">{dishes.length}</div>
         </div>
       </div>
@@ -280,7 +230,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <MdFolder className="text-xl" />
+              <span className="text-xl">📁</span>
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Manage Categories</h2>
@@ -307,7 +257,7 @@ export default function AdminDashboard({ apiBase }) {
                   onClick={addCategory} 
                   className="btn-success whitespace-nowrap"
                 >
-                  <MdAdd className="inline text-base" /> Add
+                  ➕ Add
                 </button>
               </div>
             </div>
@@ -317,7 +267,7 @@ export default function AdminDashboard({ apiBase }) {
                 {categories.map(cat => (
                   <div key={cat.id} className="flex justify-between items-center border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-2">
-                      <MdFolder className="text-lg" />
+                      <span className="text-lg">📁</span>
                       <div>
                         <div className="font-semibold text-sm text-gray-900">{cat.name}</div>
                         <div className="text-xs text-gray-500">
@@ -330,7 +280,7 @@ export default function AdminDashboard({ apiBase }) {
                       className="btn-danger text-xs"
                       title="Delete"
                     >
-                      <MdDelete className="text-base" />
+                      🗑️
                     </button>
                   </div>
                 ))}
@@ -348,7 +298,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <MdRestaurantMenu className="text-xl" />
+              <span className="text-xl">🥬</span>
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('manageIngredients')}</h2>
@@ -386,10 +336,10 @@ export default function AdminDashboard({ apiBase }) {
                 className="btn-success"
                 disabled={categories.length === 0}
               >
-                <MdAdd className="inline text-base" /> {t('addIngredient')}
+                ➕ {t('addIngredient')}
               </button>
               {categories.length === 0 && (
-                <p className="text-xs text-red-600 mt-2 flex items-center gap-1"><MdWarning className="text-sm" /> Add categories first</p>
+                <p className="text-xs text-red-600 mt-2">⚠️ Add categories first</p>
               )}
             </div>
 
@@ -398,7 +348,7 @@ export default function AdminDashboard({ apiBase }) {
                 {ingredients.map(ing => (
                   <div key={ing.id} className="flex justify-between items-center border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-2">
-                      <MdRestaurantMenu className="text-lg" />
+                      <span className="text-lg">🍽️</span>
                       <div>
                         <div className="font-semibold text-sm text-gray-900">{ing.name}</div>
                         <div className="text-xs text-gray-500">Category: {ing.category_name || 'N/A'}</div>
@@ -409,7 +359,7 @@ export default function AdminDashboard({ apiBase }) {
                       className="btn-danger text-xs"
                       title={t('delete')}
                     >
-                      <MdDelete className="text-base" />
+                      🗑️
                     </button>
                   </div>
                 ))}
@@ -427,7 +377,7 @@ export default function AdminDashboard({ apiBase }) {
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <MdPeople className="text-xl" />
+              <span className="text-xl">👥</span>
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Manage Customers</h2>
@@ -472,7 +422,7 @@ export default function AdminDashboard({ apiBase }) {
                 onClick={addCustomer} 
                 className="btn-success"
               >
-                <MdAdd className="inline text-base" /> Add Customer
+                ➕ Add Customer
               </button>
             </div>
 
@@ -481,14 +431,14 @@ export default function AdminDashboard({ apiBase }) {
                 {customers.map(customer => (
                   <div key={customer.id} className="flex justify-between items-start border border-gray-200 rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-start gap-2 flex-1">
-                      <MdPeople className="text-lg" />
+                      <span className="text-lg">👤</span>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-sm text-gray-900 truncate">{customer.name}</div>
                         {customer.phone && (
-                          <div className="text-xs text-gray-500 truncate flex items-center gap-1"><MdPhone className="text-xs" /> {customer.phone}</div>
+                          <div className="text-xs text-gray-500 truncate">📞 {customer.phone}</div>
                         )}
                         {customer.email && (
-                          <div className="text-xs text-gray-500 truncate flex items-center gap-1"><MdEmail className="text-xs" /> {customer.email}</div>
+                          <div className="text-xs text-gray-500 truncate">✉️ {customer.email}</div>
                         )}
                       </div>
                     </div>
@@ -497,228 +447,11 @@ export default function AdminDashboard({ apiBase }) {
                       className="btn-danger text-xs ml-2"
                       title="Delete"
                     >
-                      <MdDelete className="text-base" />
+                      🗑️
                     </button>
                   </div>
                 ))}
               </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Create Dish Section */}
-      <div className="card">
-        <div 
-          className="card-header cursor-pointer hover:bg-gray-50 rounded-lg -mx-2 px-2 transition-colors"
-          onClick={() => toggleSection('dishes')}
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <MdRestaurant className="text-xl" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('createDish')}</h2>
-              <p className="text-xs sm:text-sm text-gray-500">{t('defineDishes')}</p>
-            </div>
-          </div>
-          <button className="text-gray-400 hover:text-gray-600 transition-colors">
-            {expandedSections.dishes ? '▼' : '▶'}
-          </button>
-        </div>
-
-        {expandedSections.dishes && (
-          <>
-            {ingredients.length === 0 ? (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
-                <div className="flex items-center gap-2"><MdWarning className="text-base" /> {t('addIngredientsFirst')}</div>
-              </div>
-            ) : (
-              <>
-                <div className="mb-4 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('dishName')}</label>
-                      <input
-                        type="text"
-                        placeholder={t('dishNamePlaceholder')}
-                        className="input-modern w-full"
-                        value={newDish.name}
-                        onChange={e => setNewDish({...newDish, name: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('baseUnit')}</label>
-                      <select
-                        className="input-modern w-full"
-                        value={newDish.base_unit}
-                        onChange={e => setNewDish({...newDish, base_unit: e.target.value})}
-                      >
-                        <option value="">Select Unit...</option>
-                        <option value="g">g (Gram)</option>
-                        <option value="kg">kg (Kilogram)</option>
-                        <option value="liter">liter (Liter)</option>
-                        <option value="ml">ml (Milliliter)</option>
-                        <option value="piece">piece</option>
-                        <option value="portion">portion</option>
-                        <option value="serving">serving</option>
-                        <option value="plate">plate</option>
-                        <option value="bowl">bowl</option>
-                        <option value="cup">cup</option>
-                        <option value="pcs">pcs (Pieces)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('baseQuantity')}</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        placeholder={t('baseQuantityPlaceholder')}
-                        className="input-modern w-full"
-                        value={newDish.base_quantity}
-                        onChange={e => setNewDish({...newDish, base_quantity: e.target.value})}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">{t('baseQuantityDesc')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900">{t('dishIngredients')}</h3>
-                    {!showIngredientSelector && (
-                      <button
-                        onClick={() => setShowIngredientSelector(true)}
-                        className="btn-success text-sm"
-                      >
-                        <MdAdd className="inline text-base" /> {t('addIngredientToDish')}
-                      </button>
-                    )}
-                  </div>
-
-                  {showIngredientSelector && (
-                    <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('selectIngredient')}</label>
-                          <select
-                            className="input-modern w-full"
-                            value={selectedIngredientForAdd?.id || ''}
-                            onChange={e => {
-                              const ing = ingredients.find(i => i.id === Number(e.target.value))
-                              setSelectedIngredientForAdd(ing || null)
-                              if (ing) {
-                                setIngredientUnit(ing.unit || '')
-                              }
-                            }}
-                          >
-                            <option value="">{t('selectIngredient')}</option>
-                            {ingredients
-                              .filter(ing => !dishIngs.some(di => di.ingredient_id === ing.id))
-                              .map(ing => (
-                                <option key={ing.id} value={ing.id}>{ing.name}</option>
-                              ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">{t('amountPerBase')}</label>
-                          <input
-                            type="number"
-                            step="0.001"
-                            placeholder={t('amountPerBasePlaceholder')}
-                            className="input-modern w-full"
-                            value={ingredientAmount}
-                            onChange={e => setIngredientAmount(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                          <select
-                            className="input-modern w-full"
-                            value={ingredientUnit}
-                            onChange={e => setIngredientUnit(e.target.value)}
-                          >
-                            <option value="">Select Unit...</option>
-                            <option value="g">g (Gram)</option>
-                            <option value="kg">kg (Kilogram)</option>
-                            <option value="liter">liter (Liter)</option>
-                            <option value="ml">ml (Milliliter)</option>
-                            <option value="piece">piece</option>
-                            <option value="portion">portion</option>
-                            <option value="serving">serving</option>
-                            <option value="plate">plate</option>
-                            <option value="bowl">bowl</option>
-                            <option value="cup">cup</option>
-                            <option value="pcs">pcs (Pieces)</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={addIngredientToDish}
-                          className="btn-success"
-                          disabled={!selectedIngredientForAdd || !ingredientAmount || !ingredientUnit}
-                        >
-                          <MdCheckCircle className="inline text-base" /> Add
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowIngredientSelector(false)
-                            setSelectedIngredientForAdd(null)
-                            setIngredientAmount('')
-                            setIngredientUnit('')
-                          }}
-                          className="btn-secondary"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {dishIngs.length === 0 ? (
-                    <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-                      <p className="text-sm text-gray-500">{t('noIngredientsAddedToDish')}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {dishIngs.map((di, idx) => {
-                        const ing = ingredients.find(i => i.id === di.ingredient_id)
-                        return (
-                          <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-3">
-                              <MdLocalDining className="text-lg" />
-                              <div>
-                                <div className="font-medium text-gray-900">{ing?.name || 'Unknown'}</div>
-                                <div className="text-xs text-gray-500">
-                                  {di.amount_per_base} {di.unit} {t('perBase')}
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => removeIngredientFromDish(idx)}
-                              className="btn-danger text-xs"
-                              title="Remove"
-                            >
-                              <MdDelete className="text-base" />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t pt-4">
-                  <button
-                    onClick={createDish}
-                    className="btn-primary w-full sm:w-auto"
-                    disabled={!newDish.name || !newDish.base_quantity || !newDish.base_unit || dishIngs.length === 0}
-                  >
-                    <MdCheckCircle className="inline text-base" /> {t('createDishButton')}
-                  </button>
-                </div>
-              </>
             )}
           </>
         )}
@@ -729,7 +462,7 @@ export default function AdminDashboard({ apiBase }) {
         <div className="card-header">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <MdRestaurant className="text-xl" />
+              <span className="text-xl">🍽️</span>
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('allDishes')}</h2>
@@ -741,7 +474,7 @@ export default function AdminDashboard({ apiBase }) {
 
         {dishes.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-            <MdRestaurant className="text-5xl mb-3 block mx-auto text-gray-400" />
+            <span className="text-5xl mb-3 block">🍽️</span>
             <p className="text-gray-500 font-medium">{t('noDishesYet')}</p>
             <p className="text-sm text-gray-400 mt-1">{t('createFirstDish')}</p>
           </div>
@@ -761,7 +494,7 @@ export default function AdminDashboard({ apiBase }) {
                     className="btn-danger ml-2"
                     title={t('delete') + ' ' + t('singleDish')}
                   >
-                    <MdDelete className="text-base" />
+                    🗑️
                   </button>
                 </div>
                 <div className="border-t pt-3">
